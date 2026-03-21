@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Lead, LeadPriority, LeadStatus, WebsiteQuality } from "@/lib/types";
 import type { ScoreBreakdown } from "@/lib/lead-score";
+import { getNextAction } from "@/lib/sales/nextActionEngine";
 import { LeadModal } from "./LeadModal";
 import { MessageModal } from "./MessageModal";
 
@@ -243,7 +244,14 @@ export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
                           </span>
                         )}
                         <div className="min-w-0">
-                          <div className="font-medium text-white">{lead.name}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-white">{lead.name}</span>
+                            {lead.is_hot && (
+                              <span className="text-xs px-1 py-0.5 rounded bg-red-950 border border-red-800 text-red-400 font-medium leading-none">
+                                🔥
+                              </span>
+                            )}
+                          </div>
                           {lead.category && (
                             <div className="text-xs text-ceibo-600 mt-0.5">{lead.category}</div>
                           )}
@@ -298,9 +306,20 @@ export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
                     </td>
 
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded border ${contactStatusBadge[lead.status]}`}>
-                        {contactStatusLabel[lead.status]}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`text-xs px-2 py-1 rounded border ${contactStatusBadge[lead.status]}`}>
+                          {contactStatusLabel[lead.status]}
+                        </span>
+                        {(() => {
+                          const na = getNextAction(lead);
+                          if (na.action === "none") return null;
+                          return (
+                            <span className={`text-xs ${na.color}`} title={na.label}>
+                              {na.icon} {na.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </td>
 
                     <td className="px-4 py-3">

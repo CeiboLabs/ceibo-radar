@@ -11,6 +11,7 @@ interface LeadFiltersProps {
   categoryFilter: string;
   tagFilter: string;
   favoritesOnly: boolean;
+  hotOnly: boolean;
   locations: string[];
   categories: string[];
   tags: string[];
@@ -22,6 +23,7 @@ interface LeadFiltersProps {
   onCategoryChange: (v: string) => void;
   onTagChange: (v: string) => void;
   onFavoritesChange: (v: boolean) => void;
+  onHotChange: (v: boolean) => void;
   onExport: () => void;
   totalCount: number;
 }
@@ -38,6 +40,7 @@ export function LeadFilters({
   categoryFilter,
   tagFilter,
   favoritesOnly,
+  hotOnly,
   locations,
   categories,
   tags,
@@ -49,6 +52,7 @@ export function LeadFilters({
   onCategoryChange,
   onTagChange,
   onFavoritesChange,
+  onHotChange,
   onExport,
   totalCount,
 }: LeadFiltersProps) {
@@ -145,6 +149,19 @@ export function LeadFilters({
           ))}
         </select>
       )}
+
+      {/* Hot leads toggle */}
+      <button
+        onClick={() => onHotChange(!hotOnly)}
+        className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+          hotOnly
+            ? "bg-red-950/60 border-red-800 text-red-400"
+            : "bg-gray-800 border-gray-700 text-gray-500 hover:text-red-400 hover:border-red-800"
+        }`}
+        title={hotOnly ? "Mostrar todos" : "Solo hot leads"}
+      >
+        🔥 Hot
+      </button>
 
       {/* Favorites toggle */}
       <button

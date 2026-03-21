@@ -5,8 +5,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
+  { href: "/today",         label: "🗓 Hoy"            },
   { href: "/feed",          label: "🆕 Feed"           },
-  { href: "/opportunities", label: "🔥 Oportunidades"  },
+  { href: "/opportunities", label: "Oportunidades"     },
   { href: "/",              label: "Leads"             },
   { href: "/campaigns",     label: "Campañas"          },
   { href: "/dashboard",     label: "Dashboard"         },
@@ -54,7 +55,7 @@ export function AppNav() {
           })}
         </nav>
 
-        <div className="ml-auto text-xs text-gray-700 font-mono">v0.7.0</div>
+        <div className="ml-auto text-xs text-gray-700 font-mono">v0.8.0</div>
       </div>
     </header>
   );

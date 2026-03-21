@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [hotOnly, setHotOnly] = useState(false);
   const [lastResult, setLastResult] = useState<{
     total: number; no_website: number; bad_website: number;
   } | null>(null);
@@ -30,10 +31,11 @@ export default function Dashboard() {
     if (platform !== "all") params.set("platform", platform);
     if (status !== "all") params.set("status", status);
     if (favoritesOnly) params.set("favorites", "1");
+    if (hotOnly) params.set("hot", "1");
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
     setLeads(data);
-  }, [websiteFilter, priority, platform, status, favoritesOnly]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -183,6 +185,7 @@ export default function Dashboard() {
             categoryFilter={categoryFilter}
             tagFilter={tagFilter}
             favoritesOnly={favoritesOnly}
+            hotOnly={hotOnly}
             locations={distinctLocations}
             categories={distinctCategories}
             tags={distinctTags}
@@ -194,6 +197,7 @@ export default function Dashboard() {
             onCategoryChange={setCategoryFilter}
             onTagChange={setTagFilter}
             onFavoritesChange={setFavoritesOnly}
+            onHotChange={setHotOnly}
             onExport={handleExport}
             totalCount={displayedLeads.length}
           />

@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status") as LeadStatus | null;
   const priority = (searchParams.get("priority") ?? "all") as PriorityFilter;
   const favoritesOnly = searchParams.get("favorites") === "1";
+  const hotOnly = searchParams.get("hot") === "1";
 
   let query = "SELECT * FROM leads WHERE 1=1";
   const params: (string | number)[] = [];
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
   }
   if (favoritesOnly) {
     query += " AND is_favorite = 1";
+  }
+  if (hotOnly) {
+    query += " AND is_hot = 1";
   }
 
   // Default: highest score first, then by creation date for ties

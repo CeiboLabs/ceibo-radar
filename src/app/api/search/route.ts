@@ -11,6 +11,7 @@ import { computeAutoTags } from "@/lib/auto-tagger";
 import { generateContactReason } from "@/lib/contact-reason";
 import { generateDiagnosis } from "@/lib/diagnosis";
 import { estimateClientValue } from "@/lib/value-estimator";
+import { isHotLead } from "@/lib/sales/hotLeadDetector";
 import type { Platform, ScrapedBusiness, SearchConfig, WebsiteQuality } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         website_quality, website_quality_score, website_quality_issues, website_quality_summary,
         lead_score, lead_priority, lead_score_breakdown,
         contact_reason, business_diagnosis, estimated_value,
-        status, sequence_stage, keyword, search_location
+        is_hot, status, sequence_stage, keyword, search_location
       ) VALUES (
         @name, @platform, @profile_url, @phone, @email, @location,
         @description, @category,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         @website_quality, @website_quality_score, @website_quality_issues, @website_quality_summary,
         @lead_score, @lead_priority, @lead_score_breakdown,
         @contact_reason, @business_diagnosis, @estimated_value,
-        'not_contacted', 'none', @keyword, @search_location
+        @is_hot, 'not_contacted', 'none', @keyword, @search_location
       )
     `);
 
@@ -233,6 +234,15 @@ export async function POST(req: NextRequest) {
             contact_reason: contactReason,
             business_diagnosis: businessDiagnosis,
             estimated_value: estimatedValue,
+            is_hot: isHotLead({
+              lead_priority: priority,
+              lead_score: score,
+              has_website: hasWebsite,
+              website_quality: websiteQuality,
+              phone: business.phone ?? null,
+              email: business.email ?? null,
+              sequence_stage: "none",
+            }) ? 1 : 0,
             keyword,
             search_location: location,
           });

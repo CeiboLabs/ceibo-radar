@@ -175,6 +175,8 @@ function runMigrations(db: Database.Database) {
     ["ai_analyzed_at", "TEXT"],
     // v0.7.0 — Workflow
     ["is_favorite", "INTEGER NOT NULL DEFAULT 0"],
+    // v0.8.0 — Sales Execution
+    ["is_hot", "INTEGER NOT NULL DEFAULT 0"],
   ];
 
   for (const [col, type] of toAdd) {

@@ -105,6 +105,7 @@ export interface Lead {
   ai_analyzed_at: string | null;   // ISO timestamp of last AI analysis (for caching)
   // ── Workflow ───────────────────────────────────────────────────────────────
   is_favorite: boolean;            // starred/shortlisted by user
+  is_hot: boolean;                 // flagged as hot lead (high priority + actionable)
   // ─────────────────────────────────────────────────────────────────────────
   status: LeadStatus;
   sequence_stage: string | null; // none | first_contact | followup_1 | followup_2 | done
