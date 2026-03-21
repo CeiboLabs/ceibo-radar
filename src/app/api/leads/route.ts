@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
   const priority = (searchParams.get("priority") ?? "all") as PriorityFilter;
   const favoritesOnly = searchParams.get("favorites") === "1";
   const hotOnly = searchParams.get("hot") === "1";
+  const difficulty = searchParams.get("difficulty");
+  const segment = searchParams.get("segment");
+  const locationRegion = searchParams.get("region");
 
   let query = "SELECT * FROM leads WHERE 1=1";
   const params: (string | number)[] = [];
@@ -49,6 +52,18 @@ export async function GET(req: NextRequest) {
   }
   if (hotOnly) {
     query += " AND is_hot = 1";
+  }
+  if (difficulty && difficulty !== "all") {
+    query += " AND difficulty_level = ?";
+    params.push(difficulty);
+  }
+  if (segment && segment !== "all") {
+    query += ` AND segment_tags LIKE ?`;
+    params.push(`%"${segment}"%`);
+  }
+  if (locationRegion && locationRegion !== "all") {
+    query += " AND location_region = ?";
+    params.push(locationRegion);
   }
 
   // Default: highest score first, then by creation date for ties

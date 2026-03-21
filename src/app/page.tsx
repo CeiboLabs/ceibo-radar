@@ -5,6 +5,10 @@ import { SearchForm } from "@/components/SearchForm";
 import { LeadsTable } from "@/components/LeadsTable";
 import { LeadFilters } from "@/components/LeadFilters";
 import type { Lead, LeadStatus, Platform, PriorityFilter, SearchConfig, WebsiteFilter } from "@/lib/types";
+import type { DifficultyLevel } from "@/lib/sales/difficultyEngine";
+import type { SegmentTag } from "@/lib/sales/segmentationEngine";
+import { ComparatorModal } from "@/components/ComparatorModal";
+import { LeadModal } from "@/components/LeadModal";
 
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -19,6 +23,12 @@ export default function Dashboard() {
   const [tagFilter, setTagFilter] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [hotOnly, setHotOnly] = useState(false);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel | "all">("all");
+  const [segment, setSegment] = useState<SegmentTag | "all">("all");
+  const [locationRegion, setLocationRegion] = useState("all");
+  const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
+  const [comparatorOpen, setComparatorOpen] = useState(false);
+  const [comparatorLead, setComparatorLead] = useState<Lead | null>(null);
   const [lastResult, setLastResult] = useState<{
     total: number; no_website: number; bad_website: number;
   } | null>(null);
@@ -32,10 +42,13 @@ export default function Dashboard() {
     if (status !== "all") params.set("status", status);
     if (favoritesOnly) params.set("favorites", "1");
     if (hotOnly) params.set("hot", "1");
+    if (difficulty !== "all") params.set("difficulty", difficulty);
+    if (segment !== "all") params.set("segment", segment);
+    if (locationRegion !== "all") params.set("region", locationRegion);
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
     setLeads(data);
-  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -61,6 +74,11 @@ export default function Dashboard() {
     () => Array.from(new Set(leads.map((l) => l.category).filter(Boolean) as string[])).sort(),
     [leads]
   );
+  const distinctRegions = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.location_region).filter(Boolean) as string[])).sort(),
+    [leads]
+  );
+
   const distinctTags = useMemo(() => {
     const tagSet = new Set<string>();
     leads.forEach((lead) => {
@@ -186,7 +204,11 @@ export default function Dashboard() {
             tagFilter={tagFilter}
             favoritesOnly={favoritesOnly}
             hotOnly={hotOnly}
+            difficulty={difficulty}
+            segment={segment}
+            locationRegion={locationRegion}
             locations={distinctLocations}
+            regions={distinctRegions}
             categories={distinctCategories}
             tags={distinctTags}
             onWebsiteFilterChange={setWebsiteFilter}
@@ -198,12 +220,66 @@ export default function Dashboard() {
             onTagChange={setTagFilter}
             onFavoritesChange={setFavoritesOnly}
             onHotChange={setHotOnly}
+            onDifficultyChange={setDifficulty}
+            onSegmentChange={setSegment}
+            onRegionChange={setLocationRegion}
             onExport={handleExport}
             totalCount={displayedLeads.length}
           />
-          <LeadsTable leads={displayedLeads} onUpdate={handleUpdate} />
+          <LeadsTable
+            leads={displayedLeads}
+            compareIds={compareIds}
+            onToggleCompare={(id) => {
+              setCompareIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id); else next.add(id);
+                return next;
+              });
+            }}
+            onUpdate={handleUpdate}
+          />
+
+          {/* Comparator floating bar */}
+          {compareIds.size >= 2 && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 border border-ceibo-700 rounded-2xl px-5 py-3 flex items-center gap-4 shadow-2xl">
+              <span className="text-sm text-gray-300">
+                <span className="text-ceibo-400 font-bold">{compareIds.size}</span> leads seleccionados
+              </span>
+              <button
+                onClick={() => setComparatorOpen(true)}
+                className="text-sm px-4 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold transition-colors"
+              >
+                Comparar →
+              </button>
+              <button
+                onClick={() => setCompareIds(new Set())}
+                className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
         </div>
       </section>
+
+      {comparatorOpen && (
+        <ComparatorModal
+          leads={displayedLeads.filter((l) => compareIds.has(l.id))}
+          onClose={() => setComparatorOpen(false)}
+          onSelectLead={(lead) => {
+            setComparatorLead(lead);
+            setComparatorOpen(false);
+          }}
+        />
+      )}
+
+      {comparatorLead && (
+        <LeadModal
+          lead={comparatorLead}
+          onClose={() => setComparatorLead(null)}
+          onUpdate={handleUpdate}
+        />
+      )}
     </main>
   );
 }

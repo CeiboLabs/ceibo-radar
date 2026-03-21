@@ -12,6 +12,9 @@ import { generateContactReason } from "@/lib/contact-reason";
 import { generateDiagnosis } from "@/lib/diagnosis";
 import { estimateClientValue } from "@/lib/value-estimator";
 import { isHotLead } from "@/lib/sales/hotLeadDetector";
+import { computeDifficulty } from "@/lib/sales/difficultyEngine";
+import { computeSegments } from "@/lib/sales/segmentationEngine";
+import { parseLocation } from "@/lib/location";
 import type { Platform, ScrapedBusiness, SearchConfig, WebsiteQuality } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -57,7 +60,9 @@ export async function POST(req: NextRequest) {
         website_quality, website_quality_score, website_quality_issues, website_quality_summary,
         lead_score, lead_priority, lead_score_breakdown,
         contact_reason, business_diagnosis, estimated_value,
-        is_hot, status, sequence_stage, keyword, search_location
+        is_hot, difficulty_level, segment_tags,
+        location_city, location_region, location_country,
+        status, sequence_stage, keyword, search_location
       ) VALUES (
         @name, @platform, @profile_url, @phone, @email, @location,
         @description, @category,
@@ -66,7 +71,9 @@ export async function POST(req: NextRequest) {
         @website_quality, @website_quality_score, @website_quality_issues, @website_quality_summary,
         @lead_score, @lead_priority, @lead_score_breakdown,
         @contact_reason, @business_diagnosis, @estimated_value,
-        @is_hot, 'not_contacted', 'none', @keyword, @search_location
+        @is_hot, @difficulty_level, @segment_tags,
+        @location_city, @location_region, @location_country,
+        'not_contacted', 'none', @keyword, @search_location
       )
     `);
 
@@ -243,6 +250,30 @@ export async function POST(req: NextRequest) {
               email: business.email ?? null,
               sequence_stage: "none",
             }) ? 1 : 0,
+            difficulty_level: computeDifficulty(
+              { has_website: hasWebsite, website_quality: websiteQuality, phone: business.phone ?? null, email: business.email ?? null },
+              enrichment
+            ),
+            segment_tags: (() => {
+              const diffLevel = computeDifficulty(
+                { has_website: hasWebsite, website_quality: websiteQuality, phone: business.phone ?? null, email: business.email ?? null },
+                enrichment
+              );
+              return JSON.stringify(computeSegments(
+                {
+                  lead_priority: priority, lead_score: score,
+                  has_website: hasWebsite, website_quality: websiteQuality,
+                  estimated_value: estimatedValue, ai_premium_tier: null,
+                  platform: business.platform, phone: business.phone ?? null,
+                  email: business.email ?? null, status: "not_contacted",
+                },
+                diffLevel
+              ));
+            })(),
+            ...(() => {
+              const loc = parseLocation(location);
+              return { location_city: loc.city, location_region: loc.region, location_country: loc.country };
+            })(),
             keyword,
             search_location: location,
           });

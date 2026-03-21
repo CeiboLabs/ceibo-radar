@@ -106,6 +106,12 @@ export interface Lead {
   // ── Workflow ───────────────────────────────────────────────────────────────
   is_favorite: boolean;            // starred/shortlisted by user
   is_hot: boolean;                 // flagged as hot lead (high priority + actionable)
+  // ── v0.9.0 — Intelligence ──────────────────────────────────────────────────
+  difficulty_level: "easy" | "medium" | "hard" | null;
+  segment_tags: string | null;     // JSON SegmentTag[]
+  location_city: string | null;
+  location_region: string | null;
+  location_country: string | null;
   // ─────────────────────────────────────────────────────────────────────────
   status: LeadStatus;
   sequence_stage: string | null; // none | first_contact | followup_1 | followup_2 | done

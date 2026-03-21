@@ -7,6 +7,9 @@ import type {
 } from "@/lib/types";
 import type { ScoreBreakdown } from "@/lib/lead-score";
 import type { AiLeadAnalysis } from "@/lib/ai/types";
+import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
+import { getContactTiming } from "@/lib/sales/contactTimingEngine";
+import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
 
 const SEQUENCE_STAGES = [
   { key: "none",          label: "Sin iniciar"    },
@@ -303,6 +306,16 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
 
           {/* Quick badges row */}
           <div className="flex flex-wrap items-center gap-2 mt-3">
+            {/* Difficulty badge */}
+            {lead.difficulty_level && (() => {
+              const cfg = DIFFICULTY_CONFIG[lead.difficulty_level];
+              return (
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${cfg.textCls} ${cfg.bgCls} ${cfg.borderCls}`}>
+                  {cfg.emoji} {cfg.label}
+                </span>
+              );
+            })()}
+
             {priority === "high" && (
               <span className="text-xs px-2 py-0.5 rounded-full border bg-red-950/80 text-red-300 border-red-900 font-semibold">🔥 Perfect Fit</span>
             )}
@@ -348,6 +361,65 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
 
         {/* ── Scrollable content ─────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* ── Contact Context Panel ────────────────────────────────────────── */}
+          {(() => {
+            const timing = getContactTiming({ ...lead, status });
+            const segments: SegmentTag[] = (() => { try { return JSON.parse(lead.segment_tags ?? "[]"); } catch { return []; } })();
+            const timingColor =
+              timing.recommendation === "contact_now"  ? "text-ceibo-400" :
+              timing.recommendation === "followup_now" ? "text-orange-400" :
+                                                          "text-gray-400";
+            const timingIcon =
+              timing.recommendation === "contact_now"  ? "📞" :
+              timing.recommendation === "followup_now" ? "🔔" : "⏳";
+
+            return (
+              <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Contexto de Contacto</p>
+
+                {/* Timing row */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <div className={`flex items-center gap-1.5 text-sm font-medium ${timingColor}`}>
+                      <span>{timingIcon}</span>
+                      <span>{timing.recommendation === "contact_now" ? "Contactar ahora" :
+                             timing.recommendation === "followup_now" ? "Hacer seguimiento" :
+                             `Esperar ${timing.waitDays} día${timing.waitDays === 1 ? "" : "s"}`}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{timing.reason}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xs text-gray-400 font-medium">{timing.window}</div>
+                    <div className="text-xs text-gray-600">{timing.days}</div>
+                  </div>
+                </div>
+
+                {/* Segments */}
+                {segments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-gray-700">
+                    {segments.map(s => (
+                      <span key={s} className={`text-xs px-2 py-0.5 rounded-full border ${SEGMENT_COLORS[s]}`}>
+                        {SEGMENT_LABELS[s]}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Quick signals */}
+                <div className="flex flex-wrap gap-3 pt-1 border-t border-gray-700 text-xs text-gray-500">
+                  {enrichment?.activity_level && (
+                    <span>Actividad: <span className={enrichment.activity_level === "active" ? "text-ceibo-400" : "text-gray-400"}>
+                      {enrichment.activity_level === "active" ? "Activo" : enrichment.activity_level === "low_activity" ? "Baja actividad" : "—"}
+                    </span></span>
+                  )}
+                  {lead.is_hot && <span className="text-red-400 font-medium">🔥 Hot lead</span>}
+                  {lead.is_favorite && <span className="text-yellow-400">⭐ Favorito</span>}
+                  {lead.location_region && <span className="text-gray-500">📍 {lead.location_region}</span>}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Contact reason */}
           {lead.contact_reason && (

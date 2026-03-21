@@ -43,6 +43,17 @@ function Stat({ label, value, sub, color = "text-ceibo-400" }: {
   );
 }
 
+interface HeatmapRow {
+  location?: string;
+  region?: string;
+  category?: string;
+  total: number;
+  no_website: number;
+  poor_website: number;
+  hot_leads: number;
+  avg_score: number | null;
+}
+
 interface NichesState {
   niches: AiNiche[];
   analyzed_at: string;
@@ -67,6 +78,7 @@ export default function DashboardPage() {
   const [niches, setNiches] = useState<NichesState | null>(null);
   const [nichesLoading, setNichesLoading] = useState(false);
   const [nichesError, setNichesError] = useState<string | null>(null);
+  const [heatmap, setHeatmap] = useState<{ by_location: HeatmapRow[]; by_category: HeatmapRow[] } | null>(null);
 
   const fetchNiches = async (force = false) => {
     setNichesLoading(true);
@@ -90,6 +102,10 @@ export default function DashboardPage() {
     fetch("/api/metrics")
       .then((r) => r.json())
       .then((data) => { setMetrics(data); setLoading(false); });
+    fetch("/api/heatmap")
+      .then((r) => r.json())
+      .then((data) => setHeatmap(data))
+      .catch(() => {});
   }, []);
 
   if (loading) {
@@ -232,6 +248,71 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── Heatmap de Oportunidades ────────────────────────────────────────── */}
+      {heatmap && (heatmap.by_location.length > 0 || heatmap.by_category.length > 0) && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">🗺 Mapa de Oportunidades</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* By location */}
+            {heatmap.by_location.length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Por ubicación</h4>
+                <div className="space-y-2.5">
+                  {heatmap.by_location.map((row) => {
+                    const opportunity = row.no_website + row.poor_website;
+                    const pct = row.total > 0 ? Math.round((opportunity / row.total) * 100) : 0;
+                    return (
+                      <div key={row.location}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-gray-300 truncate flex-1">{row.location}</span>
+                          <span className="text-gray-500 ml-2 shrink-0">{opportunity}/{row.total} · <span className="text-orange-400">{pct}%</span></span>
+                          {row.hot_leads > 0 && (
+                            <span className="ml-2 text-red-400 shrink-0">🔥{row.hot_leads}</span>
+                          )}
+                        </div>
+                        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${pct >= 70 ? "bg-red-500" : pct >= 40 ? "bg-orange-500" : "bg-yellow-600"}`}
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* By category */}
+            {heatmap.by_category.length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Por categoría</h4>
+                <div className="space-y-2.5">
+                  {heatmap.by_category.map((row) => {
+                    const opportunity = row.no_website + row.poor_website;
+                    const pct = row.total > 0 ? Math.round((opportunity / row.total) * 100) : 0;
+                    return (
+                      <div key={row.category}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-gray-300 truncate flex-1">{row.category}</span>
+                          <span className="text-gray-500 ml-2 shrink-0">{opportunity}/{row.total} · <span className="text-orange-400">{pct}%</span></span>
+                          {row.hot_leads > 0 && (
+                            <span className="ml-2 text-red-400 shrink-0">🔥{row.hot_leads}</span>
+                          )}
+                        </div>
+                        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${pct >= 70 ? "bg-red-500" : pct >= 40 ? "bg-orange-500" : "bg-yellow-600"}`}
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* ── end Heatmap ──────────────────────────────────────────────────────── */}
 
       {/* ── Winning Niches (AI) ─────────────────────────────────────────────── */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">

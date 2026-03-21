@@ -1,6 +1,8 @@
 "use client";
 
 import type { Platform, LeadStatus, WebsiteFilter, PriorityFilter } from "@/lib/types";
+import type { DifficultyLevel } from "@/lib/sales/difficultyEngine";
+import { SEGMENT_LABELS, type SegmentTag } from "@/lib/sales/segmentationEngine";
 
 interface LeadFiltersProps {
   websiteFilter: WebsiteFilter;
@@ -12,9 +14,13 @@ interface LeadFiltersProps {
   tagFilter: string;
   favoritesOnly: boolean;
   hotOnly: boolean;
+  difficulty: DifficultyLevel | "all";
+  segment: SegmentTag | "all";
+  locationRegion: string;
   locations: string[];
   categories: string[];
   tags: string[];
+  regions: string[];
   onWebsiteFilterChange: (v: WebsiteFilter) => void;
   onPriorityChange: (v: PriorityFilter) => void;
   onPlatformChange: (v: Platform | "all") => void;
@@ -24,6 +30,9 @@ interface LeadFiltersProps {
   onTagChange: (v: string) => void;
   onFavoritesChange: (v: boolean) => void;
   onHotChange: (v: boolean) => void;
+  onDifficultyChange: (v: DifficultyLevel | "all") => void;
+  onSegmentChange: (v: SegmentTag | "all") => void;
+  onRegionChange: (v: string) => void;
   onExport: () => void;
   totalCount: number;
 }
@@ -41,9 +50,13 @@ export function LeadFilters({
   tagFilter,
   favoritesOnly,
   hotOnly,
+  difficulty,
+  segment,
+  locationRegion,
   locations,
   categories,
   tags,
+  regions,
   onWebsiteFilterChange,
   onPriorityChange,
   onPlatformChange,
@@ -53,6 +66,9 @@ export function LeadFilters({
   onTagChange,
   onFavoritesChange,
   onHotChange,
+  onDifficultyChange,
+  onSegmentChange,
+  onRegionChange,
   onExport,
   totalCount,
 }: LeadFiltersProps) {
@@ -146,6 +162,44 @@ export function LeadFilters({
           <option value="all">Todos los tags</option>
           {tags.map((tag) => (
             <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
+      )}
+
+      {/* Difficulty filter */}
+      <select
+        value={difficulty}
+        onChange={(e) => onDifficultyChange(e.target.value as DifficultyLevel | "all")}
+        className={selectClass}
+      >
+        <option value="all">Toda dificultad</option>
+        <option value="easy">🟢 Fácil</option>
+        <option value="medium">🟡 Medio</option>
+        <option value="hard">🔴 Difícil</option>
+      </select>
+
+      {/* Segment filter */}
+      <select
+        value={segment}
+        onChange={(e) => onSegmentChange(e.target.value as SegmentTag | "all")}
+        className={selectClass}
+      >
+        <option value="all">Todos los segmentos</option>
+        {(Object.keys(SEGMENT_LABELS) as SegmentTag[]).map((s) => (
+          <option key={s} value={s}>{SEGMENT_LABELS[s]}</option>
+        ))}
+      </select>
+
+      {/* Region filter */}
+      {regions.length > 0 && (
+        <select
+          value={locationRegion}
+          onChange={(e) => onRegionChange(e.target.value)}
+          className={selectClass}
+        >
+          <option value="all">Todos los departamentos</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>{r}</option>
           ))}
         </select>
       )}

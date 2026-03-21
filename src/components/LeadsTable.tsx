@@ -4,11 +4,14 @@ import { useState } from "react";
 import type { Lead, LeadPriority, LeadStatus, WebsiteQuality } from "@/lib/types";
 import type { ScoreBreakdown } from "@/lib/lead-score";
 import { getNextAction } from "@/lib/sales/nextActionEngine";
+import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
 import { LeadModal } from "./LeadModal";
 import { MessageModal } from "./MessageModal";
 
 interface LeadsTableProps {
   leads: Lead[];
+  compareIds?: Set<number>;
+  onToggleCompare?: (id: number) => void;
   onUpdate: (
     id: number,
     data: {
@@ -145,7 +148,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 // ─── Main table ───────────────────────────────────────────────────────────────
-export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
+export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate }: LeadsTableProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [messageLead, setMessageLead] = useState<Lead | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("lead_score");
@@ -206,6 +209,9 @@ export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800 text-left">
+                {onToggleCompare && (
+                  <th className="px-3 py-3 w-8" />
+                )}
                 <ThSort col="lead_score" label="Score" />
                 <ThSort col="name" label="Business" />
                 <th className="px-4 py-3 text-gray-500 font-medium">Platform</th>
@@ -230,6 +236,18 @@ export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
                     key={lead.id}
                     className={`hover:bg-gray-800/60 transition-colors ${rowHighlight} ${borderClass}`}
                   >
+                    {/* Comparator checkbox */}
+                    {onToggleCompare && (
+                      <td className="px-3 py-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={compareIds?.has(lead.id) ?? false}
+                          onChange={() => onToggleCompare(lead.id)}
+                          className="w-3.5 h-3.5 rounded accent-ceibo-500 cursor-pointer"
+                          title="Seleccionar para comparar"
+                        />
+                      </td>
+                    )}
                     {/* Score column */}
                     <td className="px-4 py-3 w-24">
                       <ScoreCell lead={lead} />
@@ -244,13 +262,21 @@ export function LeadsTable({ leads, onUpdate }: LeadsTableProps) {
                           </span>
                         )}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium text-white">{lead.name}</span>
                             {lead.is_hot && (
                               <span className="text-xs px-1 py-0.5 rounded bg-red-950 border border-red-800 text-red-400 font-medium leading-none">
                                 🔥
                               </span>
                             )}
+                            {lead.difficulty_level && (() => {
+                              const cfg = DIFFICULTY_CONFIG[lead.difficulty_level];
+                              return (
+                                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium leading-none ${cfg.textCls} ${cfg.bgCls} ${cfg.borderCls}`}>
+                                  {cfg.emoji} {cfg.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                           {lead.category && (
                             <div className="text-xs text-ceibo-600 mt-0.5">{lead.category}</div>

@@ -177,6 +177,12 @@ function runMigrations(db: Database.Database) {
     ["is_favorite", "INTEGER NOT NULL DEFAULT 0"],
     // v0.8.0 — Sales Execution
     ["is_hot", "INTEGER NOT NULL DEFAULT 0"],
+    // v0.9.0 — Intelligence
+    ["difficulty_level", "TEXT"],
+    ["segment_tags", "TEXT"],
+    ["location_city", "TEXT"],
+    ["location_region", "TEXT"],
+    ["location_country", "TEXT"],
   ];
 
   for (const [col, type] of toAdd) {

@@ -131,6 +131,8 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [messageLead, setMessageLead] = useState<Lead | null>(null);
+  const [nextLead, setNextLead] = useState<Lead | null>(null);
+  const [nextLoading, setNextLoading] = useState(false);
 
   const fetchToday = useCallback(async () => {
     setLoading(true);
@@ -145,6 +147,16 @@ export default function TodayPage() {
   }, []);
 
   useEffect(() => { fetchToday(); }, [fetchToday]);
+
+  const handleNextLead = async (excludeId?: number) => {
+    setNextLoading(true);
+    try {
+      const params = excludeId ? `?exclude_id=${excludeId}` : "";
+      const res = await fetch(`/api/next-lead${params}`);
+      const data = await res.json();
+      if (data.lead) setNextLead(data.lead);
+    } finally { setNextLoading(false); }
+  };
 
   const handleUpdate = async (id: number, data: object) => {
     await fetch(`/api/leads/${id}`, {
@@ -176,13 +188,22 @@ export default function TodayPage() {
             )}
           </p>
         </div>
-        <button
-          onClick={fetchToday}
-          disabled={loading}
-          className="text-sm text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-40"
-        >
-          {loading ? "..." : "↻ Actualizar"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleNextLead()}
+            disabled={nextLoading}
+            className="text-sm text-ceibo-400 hover:text-ceibo-300 transition-colors px-3 py-1.5 rounded-lg bg-ceibo-950/40 border border-ceibo-800 disabled:opacity-40"
+          >
+            {nextLoading ? "..." : "→ Siguiente lead"}
+          </button>
+          <button
+            onClick={fetchToday}
+            disabled={loading}
+            className="text-sm text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-40"
+          >
+            {loading ? "..." : "↻ Actualizar"}
+          </button>
+        </div>
       </div>
 
       {/* Empty state */}
@@ -228,6 +249,25 @@ export default function TodayPage() {
           lead={messageLead}
           onClose={() => setMessageLead(null)}
         />
+      )}
+
+      {nextLead && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 border border-ceibo-700 rounded-2xl px-5 py-3 flex items-center gap-4 shadow-2xl max-w-sm">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500">Siguiente recomendado:</p>
+            <p className="text-sm font-semibold text-white truncate">{nextLead.name}</p>
+            {nextLead.category && <p className="text-xs text-ceibo-600">{nextLead.category}</p>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => { setSelectedLead(nextLead); setNextLead(null); }}
+              className="text-sm px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold transition-colors"
+            >
+              Ver →
+            </button>
+            <button onClick={() => setNextLead(null)} className="text-gray-600 hover:text-gray-400 text-xs">✕</button>
+          </div>
+        </div>
       )}
     </main>
   );
