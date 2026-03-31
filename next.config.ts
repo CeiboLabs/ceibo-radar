@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3", "playwright"],
+  // playwright still needs to be external (used locally for scraping)
+  serverExternalPackages: ["playwright"],
 };
 
 export default nextConfig;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export async function PATCH(
   req: NextRequest,
@@ -7,20 +7,27 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const { enabled, name, schedule, last_run_at, leads_found_last } = await req.json();
-  const db = getDb();
-  const fields: string[] = [];
-  const values: (string | number | null)[] = [];
 
-  if (enabled !== undefined) { fields.push("enabled = ?"); values.push(enabled ? 1 : 0); }
-  if (name !== undefined) { fields.push("name = ?"); values.push(name); }
-  if (schedule !== undefined) { fields.push("schedule = ?"); values.push(schedule); }
-  if (last_run_at !== undefined) { fields.push("last_run_at = ?"); values.push(last_run_at); }
-  if (leads_found_last !== undefined) { fields.push("leads_found_last = ?"); values.push(leads_found_last); }
+  const update: Record<string, unknown> = {};
+  if (enabled !== undefined)          update.enabled = Boolean(enabled);
+  if (name !== undefined)             update.name = name;
+  if (schedule !== undefined)         update.schedule = schedule;
+  if (last_run_at !== undefined)      update.last_run_at = last_run_at;
+  if (leads_found_last !== undefined) update.leads_found_last = leads_found_last;
 
-  if (fields.length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
-  values.push(id);
-  db.prepare(`UPDATE scraping_jobs SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-  return NextResponse.json(db.prepare("SELECT * FROM scraping_jobs WHERE id = ?").get(id));
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from("scraping_jobs")
+    .update(update)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 export async function DELETE(
@@ -28,6 +35,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  getDb().prepare("DELETE FROM scraping_jobs WHERE id = ?").run(id);
+  const { error } = await supabase.from("scraping_jobs").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/lead-events";
 import type { Lead } from "@/lib/types";
 
@@ -8,10 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const db = getDb();
-  const lead = db.prepare("SELECT * FROM leads WHERE id = ?").get(id);
-  if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-  return NextResponse.json(lead);
+  const { data, error } = await supabase.from("leads").select("*").eq("id", id).single();
+  if (error || !data) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  return NextResponse.json(data);
 }
 
 export async function PATCH(
@@ -22,94 +21,63 @@ export async function PATCH(
   const body = await req.json();
   const { status, notes, tags, sequence_stage, next_followup_at, is_favorite } = body;
 
-  const db = getDb();
+  // Fetch current state for event diffing
+  const { data: before, error: fetchErr } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (fetchErr || !before) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  // Fetch current state before update (for event diffing)
-  const before = db.prepare("SELECT * FROM leads WHERE id = ?").get(id) as Lead | undefined;
-  if (!before) {
-    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-  }
-
-  const fields: string[] = [];
-  const values: (string | number | null)[] = [];
+  const update: Record<string, unknown> = {};
 
   if (status !== undefined) {
-    fields.push("status = ?");
-    values.push(status);
+    update.status = status;
+    if (status === "contacted" || status === "interested") {
+      update.last_contacted_at = new Date().toISOString();
+    }
   }
-  if (notes !== undefined) {
-    fields.push("notes = ?");
-    values.push(notes);
-  }
-  if (tags !== undefined) {
-    fields.push("tags = ?");
-    values.push(JSON.stringify(tags));
-  }
-  if (sequence_stage !== undefined) {
-    fields.push("sequence_stage = ?");
-    values.push(sequence_stage);
-  }
-  if (next_followup_at !== undefined) {
-    fields.push("next_followup_at = ?");
-    values.push(next_followup_at);
-  }
-  if (is_favorite !== undefined) {
-    fields.push("is_favorite = ?");
-    values.push(is_favorite ? 1 : 0);
-  }
+  if (notes !== undefined)          update.notes = notes;
+  if (tags !== undefined)           update.tags = JSON.stringify(tags);
+  if (sequence_stage !== undefined) update.sequence_stage = sequence_stage;
+  if (next_followup_at !== undefined) update.next_followup_at = next_followup_at ?? null;
+  if (is_favorite !== undefined)    update.is_favorite = Boolean(is_favorite);
 
-  if (fields.length === 0) {
+  if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  fields.push("updated_at = datetime('now')");
-  values.push(id);
+  const { error: updateErr } = await supabase.from("leads").update(update).eq("id", id);
+  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-  db.prepare(`UPDATE leads SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-
-  // ── Event logging ───────────────────────────────────────────────────────────
+  // ── Event logging ────────────────────────────────────────────────────────────
   const leadId = Number(id);
+  const prev = before as Lead;
 
-  if (status !== undefined && status !== before.status) {
-    const statusLabels: Record<string, string> = {
+  if (status !== undefined && status !== prev.status) {
+    const labels: Record<string, string> = {
       not_contacted: "Sin contactar",
       contacted: "Contactado",
       interested: "Interesado",
     };
-    logEvent(
-      leadId,
-      "status_changed",
-      `Estado cambiado a "${statusLabels[status] ?? status}"`
-    );
+    logEvent(leadId, "status_changed", `Estado cambiado a "${labels[status] ?? status}"`);
   }
-
-  if (notes !== undefined && notes.trim() && notes !== before.notes) {
+  if (notes !== undefined && notes?.trim() && notes !== prev.notes) {
     logEvent(leadId, "note_added", "Nota actualizada");
   }
-
   if (tags !== undefined) {
-    const prevTags: string[] = (() => {
-      try { return JSON.parse(before.tags ?? "[]"); } catch { return []; }
-    })();
+    const prevTags: string[] = (() => { try { return JSON.parse(prev.tags ?? "[]"); } catch { return []; } })();
     const nextTags: string[] = tags;
-    for (const t of nextTags) {
-      if (!prevTags.includes(t)) logEvent(leadId, "tag_added", `Tag "${t}" agregado`);
-    }
-    for (const t of prevTags) {
-      if (!nextTags.includes(t)) logEvent(leadId, "tag_removed", `Tag "${t}" eliminado`);
-    }
+    for (const t of nextTags) if (!prevTags.includes(t)) logEvent(leadId, "tag_added", `Tag "${t}" agregado`);
+    for (const t of prevTags) if (!nextTags.includes(t)) logEvent(leadId, "tag_removed", `Tag "${t}" eliminado`);
   }
-
-  if (is_favorite !== undefined && Boolean(is_favorite) !== Boolean(before.is_favorite)) {
-    logEvent(
-      leadId,
-      is_favorite ? "favorited" : "unfavorited",
-      is_favorite ? "Marcado como favorito ⭐" : "Removido de favoritos"
-    );
+  if (is_favorite !== undefined && Boolean(is_favorite) !== Boolean(prev.is_favorite)) {
+    logEvent(leadId, is_favorite ? "favorited" : "unfavorited",
+      is_favorite ? "Marcado como favorito ⭐" : "Removido de favoritos");
   }
-  // ── end event logging ───────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  const updated = db.prepare("SELECT * FROM leads WHERE id = ?").get(id);
+  const { data: updated } = await supabase.from("leads").select("*").eq("id", id).single();
   return NextResponse.json(updated);
 }
 
@@ -118,7 +86,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const db = getDb();
-  db.prepare("DELETE FROM leads WHERE id = ?").run(id);
+  const { error } = await supabase.from("leads").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }

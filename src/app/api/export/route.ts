@@ -1,29 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
-  const db = getDb();
   const { searchParams } = new URL(req.url);
   const noWebsiteOnly = searchParams.get("no_website") === "true";
 
-  let query = "SELECT * FROM leads WHERE 1=1";
-  if (noWebsiteOnly) query += " AND has_website = 0";
-  query += " ORDER BY created_at DESC";
+  let query = supabase.from("leads").select(
+    "id, name, platform, profile_url, phone, email, location, description, has_website, website_url, status, notes, keyword, search_location, created_at"
+  ).order("created_at", { ascending: false });
 
-  const leads = db.prepare(query).all() as Record<string, unknown>[];
+  if (noWebsiteOnly) query = query.eq("has_website", false);
+
+  const { data: leads } = await query;
 
   const headers = [
     "id", "name", "platform", "profile_url", "phone", "email",
     "location", "description", "has_website", "website_url",
-    "status", "notes", "keyword", "search_location", "created_at"
+    "status", "notes", "keyword", "search_location", "created_at",
   ];
 
   const csvRows = [
     headers.join(","),
-    ...leads.map((lead) =>
+    ...(leads ?? []).map((lead) =>
       headers
         .map((h) => {
-          const val = lead[h];
+          const val = (lead as Record<string, unknown>)[h];
           if (val === null || val === undefined) return "";
           const str = String(val);
           return str.includes(",") || str.includes('"') || str.includes("\n")
@@ -34,9 +35,7 @@ export async function GET(req: NextRequest) {
     ),
   ];
 
-  const csv = csvRows.join("\n");
-
-  return new NextResponse(csv, {
+  return new NextResponse(csvRows.join("\n"), {
     headers: {
       "Content-Type": "text/csv",
       "Content-Disposition": `attachment; filename="ceibo-radar-${Date.now()}.csv"`,

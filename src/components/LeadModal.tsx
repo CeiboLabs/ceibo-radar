@@ -34,6 +34,7 @@ interface LeadModalProps {
       is_favorite?: boolean;
     }
   ) => void;
+  onDelete?: (id: number) => void;
 }
 
 // ─── Config maps ──────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ function ScoreFactorRow({ item }: { item: ScoreBreakdown }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
+export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps) {
   // Slide-in animation
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -227,6 +228,13 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
     setSaving(true);
     await onUpdate(lead.id, { status, notes, tags, sequence_stage: sequenceStage, next_followup_at: nextFollowup || null });
     setSaving(false);
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`¿Eliminar el lead "${lead.name}"? Esta acción no se puede deshacer.`)) return;
+    await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+    onDelete?.(lead.id);
     onClose();
   };
 
@@ -855,6 +863,17 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
           >
             Cerrar
           </button>
+          {onDelete && (
+            <button
+              onClick={handleDelete}
+              className="px-3 bg-gray-800 hover:bg-red-950 text-gray-600 hover:text-red-400 rounded-lg text-sm transition-colors border border-gray-700 hover:border-red-900"
+              title="Eliminar lead"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

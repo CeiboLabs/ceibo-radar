@@ -69,6 +69,7 @@ export interface WebsiteAnalysis {
   score: number;
   issues: string[];
   summary: string;
+  cms_type: string | null;
 }
 
 export interface Lead {
@@ -112,6 +113,10 @@ export interface Lead {
   location_city: string | null;
   location_region: string | null;
   location_country: string | null;
+  // ── v1.1.0 — Scraper enrichment ───────────────────────────────────────────
+  rating: number | null;
+  review_count: number | null;
+  cms_type: string | null;
   // ─────────────────────────────────────────────────────────────────────────
   status: LeadStatus;
   sequence_stage: string | null; // none | first_contact | followup_1 | followup_2 | done
@@ -156,4 +161,6 @@ export interface ScrapedBusiness {
   description?: string;
   category?: string;
   website_url?: string;
+  rating?: number;
+  review_count?: number;
 }

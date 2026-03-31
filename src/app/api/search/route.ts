@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { scrapeGoogleMaps } from "@/lib/scrapers/google-maps";
 import { scrapeInstagram } from "@/lib/scrapers/instagram";
 import { checkWebsite } from "@/lib/scrapers/website-checker";
@@ -16,6 +16,53 @@ import { computeDifficulty } from "@/lib/sales/difficultyEngine";
 import { computeSegments } from "@/lib/sales/segmentationEngine";
 import { parseLocation } from "@/lib/location";
 import type { Platform, ScrapedBusiness, SearchConfig, WebsiteQuality } from "@/lib/types";
+
+// ─── Website analysis result ──────────────────────────────────────────────────
+
+interface WebsiteInfo {
+  hasWebsite: boolean;
+  websiteUrl: string | null;
+  websiteQuality: WebsiteQuality | null;
+  websiteQualityScore: number | null;
+  websiteQualityIssuesParsed: string[];
+  websiteQualityIssuesStr: string | null;
+  websiteQualitySummary: string | null;
+  cmsType: string | null;
+}
+
+const EMPTY_WEBSITE: WebsiteInfo = {
+  hasWebsite: false,
+  websiteUrl: null,
+  websiteQuality: null,
+  websiteQualityScore: null,
+  websiteQualityIssuesParsed: [],
+  websiteQualityIssuesStr: null,
+  websiteQualitySummary: null,
+  cmsType: null,
+};
+
+async function analyzeWebsiteData(url: string | undefined): Promise<WebsiteInfo> {
+  if (!url) return EMPTY_WEBSITE;
+
+  const isLive = await checkWebsite(url);
+  if (!isLive) return EMPTY_WEBSITE;
+
+  const analysis = await analyzeWebsite(url);
+  return {
+    hasWebsite: true,
+    websiteUrl: url,
+    websiteQuality: analysis.quality,
+    websiteQualityScore: analysis.score,
+    websiteQualityIssuesParsed: analysis.issues,
+    websiteQualityIssuesStr: JSON.stringify(analysis.issues),
+    websiteQualitySummary: analysis.summary,
+    cmsType: analysis.cms_type,
+  };
+}
+
+// ─── Route handler ────────────────────────────────────────────────────────────
+
+const WEBSITE_BATCH_SIZE = 5;
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -50,32 +97,9 @@ export async function POST(req: NextRequest) {
   };
 
   (async () => {
-    const db = getDb();
-    const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO leads (
-        name, platform, profile_url, phone, email, location,
-        description, category,
-        enrichment_data, opportunities, opportunity_summary, tags,
-        has_website, website_url,
-        website_quality, website_quality_score, website_quality_issues, website_quality_summary,
-        lead_score, lead_priority, lead_score_breakdown,
-        contact_reason, business_diagnosis, estimated_value,
-        is_hot, difficulty_level, segment_tags,
-        location_city, location_region, location_country,
-        status, sequence_stage, keyword, search_location
-      ) VALUES (
-        @name, @platform, @profile_url, @phone, @email, @location,
-        @description, @category,
-        @enrichment_data, @opportunities, @opportunity_summary, @tags,
-        @has_website, @website_url,
-        @website_quality, @website_quality_score, @website_quality_issues, @website_quality_summary,
-        @lead_score, @lead_priority, @lead_score_breakdown,
-        @contact_reason, @business_diagnosis, @estimated_value,
-        @is_hot, @difficulty_level, @segment_tags,
-        @location_city, @location_region, @location_country,
-        'not_contacted', 'none', @keyword, @search_location
-      )
-    `);
+    // Load all existing profile_urls once for deduplication
+    const { data: existingRows } = await supabase.from("leads").select("profile_url");
+    const existingUrls = new Set<string>((existingRows ?? []).map((r) => r.profile_url));
 
     const allSaved: Array<{ has_website: boolean; website_quality: string | null }> = [];
 
@@ -106,36 +130,61 @@ export async function POST(req: NextRequest) {
 
       if (scraped.length === 0) continue;
 
-      await send({ type: "progress", message: `Analizando ${scraped.length} negocios de ${location}...` });
+      // ── Deduplication: skip businesses already in the DB or seen this run ──
+      const newBusinesses = scraped.filter((b) => !existingUrls.has(b.profile_url));
+      const skipped = scraped.length - newBusinesses.length;
 
-      for (const business of scraped) {
-        // ── Website analysis ──────────────────────────────────────────────
-        let hasWebsite = false;
-        let websiteUrl = business.website_url ?? null;
-        let websiteQuality: WebsiteQuality | null = null;
-        let websiteQualityScore: number | null = null;
-        let websiteQualityIssuesStr: string | null = null;
-        let websiteQualityIssuesParsed: string[] = [];
-        let websiteQualitySummary: string | null = null;
+      if (skipped > 0) {
+        await send({
+          type: "progress",
+          message: `${location}: ${newBusinesses.length} nuevos, ${skipped} ya existentes (omitidos)`,
+        });
+      }
 
-        if (websiteUrl) {
-          hasWebsite = await checkWebsite(websiteUrl);
-          if (hasWebsite) {
-            const analysis = await analyzeWebsite(websiteUrl);
-            websiteQuality = analysis.quality;
-            websiteQualityScore = analysis.score;
-            websiteQualityIssuesParsed = analysis.issues;
-            websiteQualityIssuesStr = JSON.stringify(analysis.issues);
-            websiteQualitySummary = analysis.summary;
-          } else {
-            websiteUrl = null;
-          }
+      if (newBusinesses.length === 0) continue;
+
+      // Mark as seen immediately so parallel locations don't reprocess
+      newBusinesses.forEach((b) => existingUrls.add(b.profile_url));
+
+      // ── Parallel website analysis (batches of 5) ───────────────────────────
+      await send({
+        type: "progress",
+        message: `Analizando ${newBusinesses.length} sitios web de ${location}...`,
+      });
+
+      const websiteInfos: WebsiteInfo[] = [];
+      for (let i = 0; i < newBusinesses.length; i += WEBSITE_BATCH_SIZE) {
+        const batch = newBusinesses.slice(i, i + WEBSITE_BATCH_SIZE);
+        const batchResults = await Promise.allSettled(
+          batch.map((b) => analyzeWebsiteData(b.website_url))
+        );
+        for (const r of batchResults) {
+          websiteInfos.push(r.status === "fulfilled" ? r.value : { ...EMPTY_WEBSITE });
         }
 
-        // ── Scoring ───────────────────────────────────────────────────────
+        const analyzed = Math.min(i + WEBSITE_BATCH_SIZE, newBusinesses.length);
+        if (analyzed < newBusinesses.length) {
+          await send({
+            type: "progress",
+            message: `Analizando sitios web... ${analyzed}/${newBusinesses.length}`,
+          });
+        }
+      }
+
+      // ── Enrich and insert ─────────────────────────────────────────────────
+      await send({
+        type: "progress",
+        message: `Procesando y guardando ${newBusinesses.length} negocios de ${location}...`,
+      });
+
+      for (let idx = 0; idx < newBusinesses.length; idx++) {
+        const business = newBusinesses[idx];
+        const wi = websiteInfos[idx];
+
+        // Scoring
         const { score, priority, breakdown } = scorelead({
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           phone: business.phone,
           email: business.email,
           location: business.location ?? location,
@@ -144,10 +193,10 @@ export async function POST(req: NextRequest) {
           category: business.category,
         });
 
-        // ── Enrichment ────────────────────────────────────────────────────
+        // Enrichment
         const enrichment = enrichLead({
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
           phone: business.phone ?? null,
@@ -156,12 +205,12 @@ export async function POST(req: NextRequest) {
           category: business.category ?? null,
         });
 
-        // ── Opportunities ─────────────────────────────────────────────────
+        // Opportunities
         const { opportunities, summary: opSummary } = detectOpportunities({
           name: business.name,
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
-          website_quality_issues: websiteQualityIssuesParsed,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
+          website_quality_issues: wi.websiteQualityIssuesParsed,
           platform: business.platform,
           description: business.description ?? null,
           phone: business.phone ?? null,
@@ -169,10 +218,10 @@ export async function POST(req: NextRequest) {
           location: business.location ?? null,
         });
 
-        // ── Auto-tags ─────────────────────────────────────────────────────
+        // Auto-tags
         const autoTags = computeAutoTags({
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
           phone: business.phone ?? null,
@@ -183,10 +232,10 @@ export async function POST(req: NextRequest) {
           opportunities,
         });
 
-        // ── Sales intelligence ─────────────────────────────────────────────
+        // Sales intelligence
         const contactReason = generateContactReason({
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
           phone: business.phone ?? null,
@@ -195,8 +244,8 @@ export async function POST(req: NextRequest) {
         });
 
         const businessDiagnosis = generateDiagnosis({
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
           phone: business.phone ?? null,
@@ -206,79 +255,104 @@ export async function POST(req: NextRequest) {
 
         const { value: estimatedValue } = estimateClientValue({
           category: business.category ?? null,
-          has_website: hasWebsite,
-          website_quality: websiteQuality,
+          has_website: wi.hasWebsite,
+          website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
           location: business.location ?? null,
           enrichment,
         });
 
-        // ── Insert ────────────────────────────────────────────────────────
-        try {
-          const result = insertStmt.run({
-            name: business.name,
-            platform: business.platform,
-            profile_url: business.profile_url,
+        // Compute difficulty once (was computed twice before)
+        const difficultyLevel = computeDifficulty(
+          {
+            has_website: wi.hasWebsite,
+            website_quality: wi.websiteQuality,
             phone: business.phone ?? null,
             email: business.email ?? null,
-            location: business.location ?? location,
-            description: business.description ?? null,
-            category: business.category ?? null,
-            enrichment_data: JSON.stringify(enrichment),
-            opportunities: JSON.stringify(opportunities),
-            opportunity_summary: opSummary,
-            tags: JSON.stringify(autoTags),
-            has_website: hasWebsite ? 1 : 0,
-            website_url: websiteUrl,
-            website_quality: websiteQuality,
-            website_quality_score: websiteQualityScore,
-            website_quality_issues: websiteQualityIssuesStr,
-            website_quality_summary: websiteQualitySummary,
-            lead_score: score,
-            lead_priority: priority,
-            lead_score_breakdown: JSON.stringify(breakdown),
-            contact_reason: contactReason,
-            business_diagnosis: businessDiagnosis,
-            estimated_value: estimatedValue,
-            is_hot: isHotLead({
-              lead_priority: priority,
-              lead_score: score,
-              has_website: hasWebsite,
-              website_quality: websiteQuality,
-              phone: business.phone ?? null,
-              email: business.email ?? null,
-              sequence_stage: "none",
-            }) ? 1 : 0,
-            difficulty_level: computeDifficulty(
-              { has_website: hasWebsite, website_quality: websiteQuality, phone: business.phone ?? null, email: business.email ?? null },
-              enrichment
-            ),
-            segment_tags: (() => {
-              const diffLevel = computeDifficulty(
-                { has_website: hasWebsite, website_quality: websiteQuality, phone: business.phone ?? null, email: business.email ?? null },
-                enrichment
-              );
-              return JSON.stringify(computeSegments(
-                {
-                  lead_priority: priority, lead_score: score,
-                  has_website: hasWebsite, website_quality: websiteQuality,
-                  estimated_value: estimatedValue, ai_premium_tier: null,
-                  platform: business.platform, phone: business.phone ?? null,
-                  email: business.email ?? null, status: "not_contacted",
-                },
-                diffLevel
-              ));
-            })(),
-            ...(() => {
-              const loc = parseLocation(location);
-              return { location_city: loc.city, location_region: loc.region, location_country: loc.country };
-            })(),
-            keyword,
-            search_location: location,
-          });
-          if (result.changes > 0) {
-            allSaved.push({ has_website: hasWebsite, website_quality: websiteQuality });
+          },
+          enrichment
+        );
+
+        const parsedLocation = parseLocation(location);
+
+        try {
+          const { data: inserted } = await supabase
+            .from("leads")
+            .upsert(
+              {
+                name: business.name,
+                platform: business.platform,
+                profile_url: business.profile_url,
+                phone: business.phone ?? null,
+                email: business.email ?? null,
+                location: business.location ?? location,
+                description: business.description ?? null,
+                category: business.category ?? null,
+                enrichment_data: JSON.stringify(enrichment),
+                opportunities: JSON.stringify(opportunities),
+                opportunity_summary: opSummary,
+                tags: JSON.stringify(autoTags),
+                has_website: wi.hasWebsite,
+                website_url: wi.websiteUrl,
+                website_quality: wi.websiteQuality,
+                website_quality_score: wi.websiteQualityScore,
+                website_quality_issues: wi.websiteQualityIssuesStr,
+                website_quality_summary: wi.websiteQualitySummary,
+                lead_score: score,
+                lead_priority: priority,
+                lead_score_breakdown: JSON.stringify(breakdown),
+                contact_reason: contactReason,
+                business_diagnosis: businessDiagnosis,
+                estimated_value: estimatedValue,
+                is_hot: isHotLead({
+                  lead_priority: priority,
+                  lead_score: score,
+                  has_website: wi.hasWebsite,
+                  website_quality: wi.websiteQuality,
+                  phone: business.phone ?? null,
+                  email: business.email ?? null,
+                  sequence_stage: "none",
+                }),
+                difficulty_level: difficultyLevel,
+                segment_tags: JSON.stringify(
+                  computeSegments(
+                    {
+                      lead_priority: priority,
+                      lead_score: score,
+                      has_website: wi.hasWebsite,
+                      website_quality: wi.websiteQuality,
+                      estimated_value: estimatedValue,
+                      ai_premium_tier: null,
+                      platform: business.platform,
+                      phone: business.phone ?? null,
+                      email: business.email ?? null,
+                      status: "not_contacted",
+                    },
+                    difficultyLevel
+                  )
+                ),
+                location_city: parsedLocation.city,
+                location_region: parsedLocation.region,
+                location_country: parsedLocation.country,
+                rating: business.rating ?? null,
+                review_count: business.review_count ?? null,
+                cms_type: wi.cmsType,
+                status: "not_contacted",
+                sequence_stage: "none",
+                keyword,
+                search_location: location,
+              },
+              { onConflict: "profile_url", ignoreDuplicates: true }
+            )
+            .select("id");
+
+          if (inserted && inserted.length > 0) {
+            allSaved.push({ has_website: wi.hasWebsite, website_quality: wi.websiteQuality });
+            await send({
+              type: "progress",
+              message: `✓ ${business.name}${wi.hasWebsite ? ` (web: ${wi.websiteQuality})` : " (sin web)"}${business.rating ? ` ★${business.rating}` : ""}`,
+            });
           }
         } catch {}
       }
@@ -289,7 +363,8 @@ export async function POST(req: NextRequest) {
       total: allSaved.length,
       no_website: allSaved.filter((l) => !l.has_website).length,
       bad_website: allSaved.filter(
-        (l) => l.website_quality === "poor" || l.website_quality === "needs_improvement"
+        (l) =>
+          l.website_quality === "poor" || l.website_quality === "needs_improvement"
       ).length,
     });
     await writer.close();

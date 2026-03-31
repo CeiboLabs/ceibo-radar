@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { isAiAvailable, callAI } from "@/lib/ai/aiService";
 import { buildNichesPrompt, NICHES_SYSTEM_PROMPT } from "@/lib/ai/promptBuilders";
 import { parseNichesResult } from "@/lib/ai/aiParsers";
 import type { NicheStats } from "@/lib/ai/types";
 
-// Cache TTL: 24 hours
 const CACHE_KEY = "niches_analysis";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function GET() {
-  const db = getDb();
-
   // Check cache
-  const cached = db
-    .prepare("SELECT value, created_at FROM ai_cache WHERE key = ?")
-    .get(CACHE_KEY) as { value: string; created_at: string } | undefined;
+  const { data: cached } = await supabase
+    .from("ai_cache")
+    .select("value, created_at")
+    .eq("key", CACHE_KEY)
+    .single();
 
   if (cached) {
     const age = Date.now() - new Date(cached.created_at).getTime();
@@ -31,21 +30,35 @@ export async function GET() {
     );
   }
 
-  // Aggregate stats by category (min 2 leads to be meaningful)
-  const stats = db.prepare(`
-    SELECT
+  // Aggregate by category in JS
+  const { data: leadsData } = await supabase
+    .from("leads")
+    .select("category, has_website, website_quality, lead_score")
+    .not("category", "is", null)
+    .neq("category", "");
+
+  const catMap = new Map<string, { total: number; no_website: number; poor_website: number; score_sum: number; score_count: number }>();
+  for (const l of leadsData ?? []) {
+    if (!l.category) continue;
+    if (!catMap.has(l.category)) catMap.set(l.category, { total: 0, no_website: 0, poor_website: 0, score_sum: 0, score_count: 0 });
+    const e = catMap.get(l.category)!;
+    e.total++;
+    if (!l.has_website) e.no_website++;
+    if (l.website_quality === "poor") e.poor_website++;
+    if (l.lead_score != null) { e.score_sum += l.lead_score; e.score_count++; }
+  }
+
+  const stats: NicheStats[] = Array.from(catMap.entries())
+    .filter(([, e]) => e.total >= 2)
+    .map(([category, e]) => ({
       category,
-      COUNT(*) as total,
-      SUM(CASE WHEN has_website = 0 THEN 1 ELSE 0 END) as no_website,
-      SUM(CASE WHEN website_quality = 'poor' THEN 1 ELSE 0 END) as poor_website,
-      ROUND(AVG(COALESCE(lead_score, 0))) as avg_score
-    FROM leads
-    WHERE category IS NOT NULL AND category != ''
-    GROUP BY category
-    HAVING COUNT(*) >= 2
-    ORDER BY no_website DESC, total DESC
-    LIMIT 30
-  `).all() as NicheStats[];
+      total: e.total,
+      no_website: e.no_website,
+      poor_website: e.poor_website,
+      avg_score: e.score_count > 0 ? Math.round(e.score_sum / e.score_count) : 0,
+    }))
+    .sort((a, b) => b.no_website - a.no_website || b.total - a.total)
+    .slice(0, 30);
 
   if (stats.length === 0) {
     return NextResponse.json(
@@ -55,16 +68,14 @@ export async function GET() {
   }
 
   try {
-    const userPrompt = buildNichesPrompt(stats);
-    const raw = await callAI(NICHES_SYSTEM_PROMPT, userPrompt, 1000);
+    const raw = await callAI(NICHES_SYSTEM_PROMPT, buildNichesPrompt(stats), 1000);
     const result = parseNichesResult(raw);
 
-    // Save to cache (upsert)
-    db.prepare(`
-      INSERT INTO ai_cache (key, value, created_at)
-      VALUES (?, ?, datetime('now'))
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value, created_at = excluded.created_at
-    `).run(CACHE_KEY, JSON.stringify(result));
+    // Upsert cache
+    await supabase.from("ai_cache").upsert(
+      { key: CACHE_KEY, value: JSON.stringify(result), created_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
 
     return NextResponse.json({ ...result, cached: false });
   } catch (err) {
@@ -73,10 +84,7 @@ export async function GET() {
   }
 }
 
-// Force refresh (ignores cache)
 export async function POST() {
-  const db = getDb();
-  db.prepare("DELETE FROM ai_cache WHERE key = ?").run(CACHE_KEY);
-
+  await supabase.from("ai_cache").delete().eq("key", CACHE_KEY);
   return GET();
 }

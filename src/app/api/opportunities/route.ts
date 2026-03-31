@@ -1,115 +1,66 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
-/**
- * GET /api/opportunities
- * Returns curated opportunity data for the Top Opportunities dashboard.
- */
 export async function GET() {
-  const db = getDb();
+  const { data: all } = await supabase
+    .from("leads")
+    .select("id, name, platform, category, search_location, lead_score, lead_priority, has_website, website_quality, contact_reason, business_diagnosis, estimated_value, phone, email, status, opportunity_summary, created_at, is_hot");
 
-  // ── Top leads by score ────────────────────────────────────────────────────
-  const topLeads = db.prepare(`
-    SELECT id, name, platform, category, search_location,
-           lead_score, lead_priority, has_website, website_quality,
-           contact_reason, business_diagnosis, estimated_value,
-           phone, email, status, opportunity_summary
-    FROM leads
-    WHERE lead_score IS NOT NULL
-    ORDER BY lead_score DESC
-    LIMIT 10
-  `).all();
+  const leads = all ?? [];
 
-  // ── Active businesses without website ─────────────────────────────────────
-  const activeNoWeb = db.prepare(`
-    SELECT id, name, platform, category, search_location,
-           lead_score, lead_priority, has_website,
-           contact_reason, estimated_value, phone, email, status
-    FROM leads
-    WHERE has_website = 0
-      AND (phone IS NOT NULL OR email IS NOT NULL OR description IS NOT NULL)
-      AND lead_score IS NOT NULL
-    ORDER BY lead_score DESC
-    LIMIT 10
-  `).all();
+  const topLeads = [...leads]
+    .filter((l) => l.lead_score != null)
+    .sort((a, b) => (b.lead_score ?? 0) - (a.lead_score ?? 0))
+    .slice(0, 10);
 
-  // ── High-value leads not yet contacted ────────────────────────────────────
-  const freshOpportunities = db.prepare(`
-    SELECT id, name, platform, category, search_location,
-           lead_score, lead_priority, has_website, website_quality,
-           contact_reason, estimated_value, status
-    FROM leads
-    WHERE status = 'not_contacted'
-      AND lead_priority = 'high'
-    ORDER BY lead_score DESC, created_at DESC
-    LIMIT 10
-  `).all();
+  const activeNoWeb = leads
+    .filter((l) => !l.has_website && (l.phone || l.email) && l.lead_score != null)
+    .sort((a, b) => (b.lead_score ?? 0) - (a.lead_score ?? 0))
+    .slice(0, 10);
 
-  // ── Niche analysis: categories with most opportunities ────────────────────
-  const topNiches = db.prepare(`
-    SELECT
-      category,
-      COUNT(*) as total,
-      SUM(CASE WHEN has_website = 0 THEN 1 ELSE 0 END) as no_website,
-      SUM(CASE WHEN website_quality IN ('poor','needs_improvement') THEN 1 ELSE 0 END) as weak_website,
-      ROUND(AVG(CASE WHEN lead_score IS NOT NULL THEN lead_score END), 1) as avg_score
-    FROM leads
-    WHERE category IS NOT NULL
-    GROUP BY category
-    HAVING total >= 2
-    ORDER BY (no_website + weak_website) DESC, avg_score DESC
-    LIMIT 12
-  `).all() as {
-    category: string;
-    total: number;
-    no_website: number;
-    weak_website: number;
-    avg_score: number;
-  }[];
+  const freshOpportunities = leads
+    .filter((l) => l.status === "not_contacted" && l.lead_priority === "high")
+    .sort((a, b) => (b.lead_score ?? 0) - (a.lead_score ?? 0))
+    .slice(0, 10);
 
-  // ── Top locations by opportunity density ──────────────────────────────────
-  const topLocations = db.prepare(`
-    SELECT
-      search_location,
-      COUNT(*) as total,
-      SUM(CASE WHEN has_website = 0 THEN 1 ELSE 0 END) as no_website,
-      SUM(CASE WHEN lead_priority = 'high' THEN 1 ELSE 0 END) as high_priority,
-      ROUND(AVG(CASE WHEN lead_score IS NOT NULL THEN lead_score END), 1) as avg_score
-    FROM leads
-    GROUP BY search_location
-    ORDER BY no_website DESC, high_priority DESC
-    LIMIT 8
-  `).all() as {
-    search_location: string;
-    total: number;
-    no_website: number;
-    high_priority: number;
-    avg_score: number;
-  }[];
+  const catMap = new Map();
+  for (const l of leads) {
+    if (!l.category) continue;
+    if (!catMap.has(l.category)) catMap.set(l.category, { total: 0, no_website: 0, weak_website: 0, score_sum: 0, score_count: 0 });
+    const e = catMap.get(l.category);
+    e.total++;
+    if (!l.has_website) e.no_website++;
+    if (l.website_quality === "poor" || l.website_quality === "needs_improvement") e.weak_website++;
+    if (l.lead_score != null) { e.score_sum += l.lead_score; e.score_count++; }
+  }
+  const topNiches = Array.from(catMap.entries())
+    .filter(([, e]) => e.total >= 2)
+    .map(([category, e]) => ({ category, total: e.total, no_website: e.no_website, weak_website: e.weak_website, avg_score: e.score_count > 0 ? Math.round((e.score_sum / e.score_count) * 10) / 10 : 0 }))
+    .sort((a, b) => (b.no_website + b.weak_website) - (a.no_website + a.weak_website))
+    .slice(0, 12);
 
-  // ── Summary stats ─────────────────────────────────────────────────────────
-  const stats = db.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN has_website = 0 THEN 1 ELSE 0 END) as no_website,
-      SUM(CASE WHEN lead_priority = 'high' THEN 1 ELSE 0 END) as high_priority,
-      SUM(CASE WHEN status = 'not_contacted' AND lead_priority = 'high' THEN 1 ELSE 0 END) as untouched_high,
-      SUM(CASE WHEN estimated_value = 'high' THEN 1 ELSE 0 END) as high_value
-    FROM leads
-  `).get() as {
-    total: number;
-    no_website: number;
-    high_priority: number;
-    untouched_high: number;
-    high_value: number;
+  const locMap = new Map();
+  for (const l of leads) {
+    if (!l.search_location) continue;
+    if (!locMap.has(l.search_location)) locMap.set(l.search_location, { total: 0, no_website: 0, high_priority: 0, score_sum: 0, score_count: 0 });
+    const e = locMap.get(l.search_location);
+    e.total++;
+    if (!l.has_website) e.no_website++;
+    if (l.lead_priority === "high") e.high_priority++;
+    if (l.lead_score != null) { e.score_sum += l.lead_score; e.score_count++; }
+  }
+  const topLocations = Array.from(locMap.entries())
+    .map(([search_location, e]) => ({ search_location, total: e.total, no_website: e.no_website, high_priority: e.high_priority, avg_score: e.score_count > 0 ? Math.round((e.score_sum / e.score_count) * 10) / 10 : 0 }))
+    .sort((a, b) => b.no_website - a.no_website)
+    .slice(0, 8);
+
+  const stats = {
+    total: leads.length,
+    no_website: leads.filter((l) => !l.has_website).length,
+    high_priority: leads.filter((l) => l.lead_priority === "high").length,
+    untouched_high: leads.filter((l) => l.status === "not_contacted" && l.lead_priority === "high").length,
+    high_value: leads.filter((l) => l.estimated_value === "high").length,
   };
 
-  return NextResponse.json({
-    stats,
-    topLeads,
-    activeNoWeb,
-    freshOpportunities,
-    topNiches,
-    topLocations,
-  });
+  return NextResponse.json({ stats, topLeads, activeNoWeb, freshOpportunities, topNiches, topLocations });
 }

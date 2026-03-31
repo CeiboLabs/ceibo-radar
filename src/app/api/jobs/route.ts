@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
-  const db = getDb();
-  const jobs = db.prepare("SELECT * FROM scraping_jobs ORDER BY created_at DESC").all();
-  return NextResponse.json(jobs);
+  const { data, error } = await supabase
+    .from("scraping_jobs")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data ?? []);
 }
 
 export async function POST(req: NextRequest) {
@@ -12,18 +15,20 @@ export async function POST(req: NextRequest) {
   if (!name?.trim() || !keyword?.trim() || !locations?.length) {
     return NextResponse.json({ error: "name, keyword, and locations are required" }, { status: 400 });
   }
-  const db = getDb();
-  const result = db.prepare(`
-    INSERT INTO scraping_jobs (name, keyword, locations, platforms, max_scrolls, schedule)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    name.trim(),
-    keyword.trim(),
-    JSON.stringify(locations),
-    JSON.stringify(platforms ?? ["google_maps"]),
-    max_scrolls ?? 8,
-    schedule ?? "manual"
-  );
-  const created = db.prepare("SELECT * FROM scraping_jobs WHERE id = ?").get(result.lastInsertRowid);
-  return NextResponse.json(created, { status: 201 });
+
+  const { data, error } = await supabase
+    .from("scraping_jobs")
+    .insert({
+      name: name.trim(),
+      keyword: keyword.trim(),
+      locations: JSON.stringify(locations),
+      platforms: JSON.stringify(platforms ?? ["google_maps"]),
+      max_scrolls: max_scrolls ?? 8,
+      schedule: schedule ?? "manual",
+    })
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data, { status: 201 });
 }

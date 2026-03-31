@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import type { LeadStatus, Platform, WebsiteFilter, PriorityFilter } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
-  const db = getDb();
   const { searchParams } = new URL(req.url);
 
   const websiteFilter = (searchParams.get("website_filter") ?? "all") as WebsiteFilter;
@@ -16,59 +15,28 @@ export async function GET(req: NextRequest) {
   const segment = searchParams.get("segment");
   const locationRegion = searchParams.get("region");
 
-  let query = "SELECT * FROM leads WHERE 1=1";
-  const params: (string | number)[] = [];
+  let query = supabase.from("leads").select("*");
 
   switch (websiteFilter) {
-    case "no_website":
-      query += " AND has_website = 0";
-      break;
-    case "poor":
-      query += " AND website_quality = 'poor'";
-      break;
-    case "needs_improvement":
-      query += " AND website_quality = 'needs_improvement'";
-      break;
-    case "good":
-      query += " AND website_quality = 'good'";
-      break;
+    case "no_website":    query = query.eq("has_website", false); break;
+    case "poor":          query = query.eq("website_quality", "poor"); break;
+    case "needs_improvement": query = query.eq("website_quality", "needs_improvement"); break;
+    case "good":          query = query.eq("website_quality", "good"); break;
   }
 
-  if (priority !== "all") {
-    query += " AND lead_priority = ?";
-    params.push(priority);
-  }
+  if (priority !== "all")              query = query.eq("lead_priority", priority);
+  if (platform)                        query = query.eq("platform", platform);
+  if (status)                          query = query.eq("status", status);
+  if (favoritesOnly)                   query = query.eq("is_favorite", true);
+  if (hotOnly)                         query = query.eq("is_hot", true);
+  if (difficulty && difficulty !== "all") query = query.eq("difficulty_level", difficulty);
+  if (segment && segment !== "all")    query = query.ilike("segment_tags", `%"${segment}"%`);
+  if (locationRegion && locationRegion !== "all") query = query.eq("location_region", locationRegion);
 
-  if (platform) {
-    query += " AND platform = ?";
-    params.push(platform);
-  }
-  if (status) {
-    query += " AND status = ?";
-    params.push(status);
-  }
-  if (favoritesOnly) {
-    query += " AND is_favorite = 1";
-  }
-  if (hotOnly) {
-    query += " AND is_hot = 1";
-  }
-  if (difficulty && difficulty !== "all") {
-    query += " AND difficulty_level = ?";
-    params.push(difficulty);
-  }
-  if (segment && segment !== "all") {
-    query += ` AND segment_tags LIKE ?`;
-    params.push(`%"${segment}"%`);
-  }
-  if (locationRegion && locationRegion !== "all") {
-    query += " AND location_region = ?";
-    params.push(locationRegion);
-  }
+  const { data: leads, error } = await query
+    .order("lead_score", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
 
-  // Default: highest score first, then by creation date for ties
-  query += " ORDER BY lead_score DESC NULLS LAST, created_at DESC";
-
-  const leads = db.prepare(query).all(...params);
-  return NextResponse.json(leads);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(leads ?? []);
 }

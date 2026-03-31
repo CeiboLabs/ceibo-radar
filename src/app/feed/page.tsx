@@ -206,6 +206,12 @@ export default function FeedPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    setLeads(prev => prev.filter(l => l.id !== id));
+    setSelectedLead(null);
+  };
+
   // Group leads by date
   const today   = leads.filter(l => getDateGroup(l.created_at) === "today");
   const week    = leads.filter(l => getDateGroup(l.created_at) === "week");
@@ -290,6 +296,7 @@ export default function FeedPage() {
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onUpdate={handleUpdate}
+          onDelete={handleDelete}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { supabase } from "./supabase";
 
 export type EventType =
   | "status_changed"
@@ -9,17 +9,14 @@ export type EventType =
   | "favorited"
   | "unfavorited";
 
+/** Fire-and-forget event logger — never throws */
 export function logEvent(
   leadId: number,
   eventType: EventType,
   description: string
 ): void {
-  try {
-    const db = getDb();
-    db.prepare(
-      "INSERT INTO lead_events (lead_id, event_type, description) VALUES (?, ?, ?)"
-    ).run(leadId, eventType, description);
-  } catch {
-    // Non-fatal — never break the main action because of event logging
-  }
+  supabase
+    .from("lead_events")
+    .insert({ lead_id: leadId, event_type: eventType, description })
+    .then();
 }

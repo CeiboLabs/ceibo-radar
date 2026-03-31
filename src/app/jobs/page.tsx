@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ScrapeJob } from "@/lib/types";
+import { URUGUAY_DEPARTMENTS } from "@/components/SearchForm";
 
 function CreateJobModal({ onClose, onCreate }: {
   onClose: () => void;
@@ -9,7 +10,7 @@ function CreateJobModal({ onClose, onCreate }: {
 }) {
   const [name, setName] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [locationsText, setLocationsText] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set(["Montevideo, Uruguay"]));
   const [platforms, setPlatforms] = useState<string[]>(["google_maps"]);
   const [maxScrolls, setMaxScrolls] = useState(8);
   const [schedule, setSchedule] = useState("manual");
@@ -19,14 +20,22 @@ function CreateJobModal({ onClose, onCreate }: {
     setPlatforms((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   };
 
+  const toggleDept = (term: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(term)) { if (next.size > 1) next.delete(term); }
+      else next.add(term);
+      return next;
+    });
+  };
+
   const handleCreate = async () => {
-    if (!name.trim() || !keyword.trim() || !locationsText.trim()) return;
+    if (!name.trim() || !keyword.trim() || selected.size === 0) return;
     setSaving(true);
-    const locations = locationsText.split(/[,\n]/).map((l) => l.trim()).filter(Boolean);
     const res = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), keyword: keyword.trim(), locations, platforms, max_scrolls: maxScrolls, schedule }),
+      body: JSON.stringify({ name: name.trim(), keyword: keyword.trim(), locations: Array.from(selected), platforms, max_scrolls: maxScrolls, schedule }),
     });
     const data = await res.json();
     onCreate(data);
@@ -36,12 +45,12 @@ function CreateJobModal({ onClose, onCreate }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-base font-bold text-white">Nuevo Job de búsqueda</h2>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Nombre</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-            placeholder="ej: Gyms Montevideo semanal"
+            placeholder="ej: Gyms Uruguay semanal"
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-ceibo-500" />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -61,12 +70,38 @@ function CreateJobModal({ onClose, onCreate }: {
             </select>
           </div>
         </div>
+
+        {/* Uruguay department selector */}
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Ubicaciones (separadas por coma)</label>
-          <input type="text" value={locationsText} onChange={(e) => setLocationsText(e.target.value)}
-            placeholder="Montevideo, Punta del Este"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-ceibo-500" />
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-medium text-gray-400">
+              Departamentos
+              <span className="ml-1.5 text-ceibo-400">{selected.size} sel.</span>
+            </label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setSelected(new Set(URUGUAY_DEPARTMENTS.map(d => d.searchTerm)))}
+                className="text-xs text-ceibo-500 hover:text-ceibo-400">Todo</button>
+              <button type="button" onClick={() => setSelected(new Set(["Montevideo, Uruguay"]))}
+                className="text-xs text-gray-500 hover:text-gray-400">Solo Mvd</button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 p-3 bg-gray-800/50 border border-gray-800 rounded-xl">
+            {URUGUAY_DEPARTMENTS.map(dept => {
+              const active = selected.has(dept.searchTerm);
+              return (
+                <button key={dept.searchTerm} type="button" onClick={() => toggleDept(dept.searchTerm)}
+                  className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
+                    active
+                      ? "bg-ceibo-800/60 border-ceibo-700 text-ceibo-300"
+                      : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400"
+                  }`}>
+                  {active && "✓ "}{dept.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-2">Plataformas</label>
           <div className="flex gap-2">
@@ -82,15 +117,15 @@ function CreateJobModal({ onClose, onCreate }: {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">
-            Profundidad — {maxScrolls} scrolls
+            Profundidad — {maxScrolls} scrolls (~{maxScrolls * 2} resultados/lugar)
           </label>
           <input type="range" min={3} max={25} value={maxScrolls} onChange={(e) => setMaxScrolls(Number(e.target.value))}
             className="w-full accent-ceibo-500" />
         </div>
         <div className="flex gap-3 pt-2">
-          <button onClick={handleCreate} disabled={saving || !name.trim() || !keyword.trim()}
+          <button onClick={handleCreate} disabled={saving || !name.trim() || !keyword.trim() || selected.size === 0}
             className="flex-1 bg-ceibo-600 hover:bg-ceibo-500 disabled:bg-gray-700 text-white font-semibold py-2 rounded-lg text-sm">
-            {saving ? "Creando..." : "Crear job"}
+            {saving ? "Creando..." : `Crear job (${selected.size} lugares)`}
           </button>
           <button onClick={onClose} className="px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm">
             Cancelar

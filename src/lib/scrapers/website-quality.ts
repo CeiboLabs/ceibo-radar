@@ -1,5 +1,53 @@
 import type { WebsiteAnalysis, WebsiteQuality } from "../types";
 
+// ─── CMS Detection ────────────────────────────────────────────────────────────
+
+function detectCms(html: string): string | null {
+  if (
+    /<meta[^>]+name=["']generator["'][^>]*content=["'][^"']*wordpress/i.test(html) ||
+    /\/wp-content\//.test(html) ||
+    /\/wp-includes\//.test(html)
+  ) return "wordpress";
+
+  if (
+    /static\.wixstatic\.com/.test(html) ||
+    /_wixCssNamespace/.test(html) ||
+    /X-Wix-Application-Instance-Id/.test(html)
+  ) return "wix";
+
+  if (
+    /static[0-9]?\.squarespace\.com/.test(html) ||
+    /squarespace-cdn\.com/.test(html)
+  ) return "squarespace";
+
+  if (
+    /cdn\.shopify\.com/.test(html) ||
+    /myshopify\.com/.test(html)
+  ) return "shopify";
+
+  if (
+    /tiendanube\.com/.test(html) ||
+    /nuvemshop\.com/.test(html)
+  ) return "tiendanube";
+
+  if (
+    /webflow\.io/.test(html) ||
+    /assets\.website-files\.com/.test(html)
+  ) return "webflow";
+
+  if (
+    /<meta[^>]+name=["']generator["'][^>]*content=["'][^"']*joomla/i.test(html) ||
+    /\/components\/com_/.test(html)
+  ) return "joomla";
+
+  if (
+    /<meta[^>]+name=["']generator["'][^>]*content=["'][^"']*drupal/i.test(html) ||
+    /Drupal\.settings/.test(html)
+  ) return "drupal";
+
+  return null;
+}
+
 interface Check {
   name: string;
   points: number; // negative = deducted if check fails
@@ -65,6 +113,7 @@ export async function analyzeWebsite(url: string): Promise<WebsiteAnalysis> {
       score: 0,
       issues: Object.values(ISSUE_LABELS),
       summary: "No se pudo cargar el sitio web.",
+      cms_type: null,
     };
   }
 
@@ -151,8 +200,9 @@ export async function analyzeWebsite(url: string): Promise<WebsiteAnalysis> {
   const issues = Array.from(failedChecks).map((k) => ISSUE_LABELS[k]);
 
   const summary = buildSummary(quality, score, failedChecks);
+  const cms_type = detectCms(html);
 
-  return { quality, score, issues, summary };
+  return { quality, score, issues, summary, cms_type };
 }
 
 function buildSummary(

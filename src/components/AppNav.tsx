@@ -55,7 +55,7 @@ export function AppNav() {
           })}
         </nav>
 
-        <div className="ml-auto text-xs text-gray-700 font-mono">v0.8.0</div>
+        <div className="ml-auto text-xs text-gray-700 font-mono">v1.0.0</div>
       </div>
     </header>
   );

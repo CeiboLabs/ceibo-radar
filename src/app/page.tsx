@@ -18,7 +18,6 @@ export default function Dashboard() {
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
   const [status, setStatus] = useState<LeadStatus | "all">("all");
-  const [locationFilter, setLocationFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -26,6 +25,7 @@ export default function Dashboard() {
   const [difficulty, setDifficulty] = useState<DifficultyLevel | "all">("all");
   const [segment, setSegment] = useState<SegmentTag | "all">("all");
   const [locationRegion, setLocationRegion] = useState("all");
+  const [nameSearch, setNameSearch] = useState("");
   const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
   const [comparatorOpen, setComparatorOpen] = useState(false);
   const [comparatorLead, setComparatorLead] = useState<Lead | null>(null);
@@ -52,24 +52,23 @@ export default function Dashboard() {
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
-  // Client-side filters for location, category, tags
+  // Client-side filters: category, tags, name search
   const displayedLeads = useMemo(() => {
     return leads.filter((lead) => {
-      if (locationFilter !== "all" && lead.search_location !== locationFilter) return false;
       if (categoryFilter !== "all" && lead.category !== categoryFilter) return false;
       if (tagFilter !== "all") {
         const tags: string[] = (() => { try { return JSON.parse(lead.tags ?? "[]"); } catch { return []; } })();
         if (!tags.includes(tagFilter)) return false;
       }
+      if (nameSearch.trim()) {
+        const q = nameSearch.trim().toLowerCase();
+        if (!lead.name?.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [leads, locationFilter, categoryFilter, tagFilter]);
+  }, [leads, categoryFilter, tagFilter, nameSearch]);
 
   // Derived filter options from loaded leads
-  const distinctLocations = useMemo(
-    () => Array.from(new Set(leads.map((l) => l.search_location).filter(Boolean))).sort(),
-    [leads]
-  );
   const distinctCategories = useMemo(
     () => Array.from(new Set(leads.map((l) => l.category).filter(Boolean) as string[])).sort(),
     [leads]
@@ -78,7 +77,6 @@ export default function Dashboard() {
     () => Array.from(new Set(leads.map((l) => l.location_region).filter(Boolean) as string[])).sort(),
     [leads]
   );
-
   const distinctTags = useMemo(() => {
     const tagSet = new Set<string>();
     leads.forEach((lead) => {
@@ -140,6 +138,26 @@ export default function Dashboard() {
     await fetchLeads();
   };
 
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    await fetchLeads();
+  };
+
+  const handleClearFilters = () => {
+    setWebsiteFilter("all");
+    setPriority("all");
+    setPlatform("all");
+    setStatus("all");
+    setCategoryFilter("all");
+    setTagFilter("all");
+    setFavoritesOnly(false);
+    setHotOnly(false);
+    setDifficulty("all");
+    setSegment("all");
+    setLocationRegion("all");
+    setNameSearch("");
+  };
+
   const handleExport = () => {
     const params = new URLSearchParams();
     if (websiteFilter !== "all") params.set("website_filter", websiteFilter);
@@ -199,7 +217,6 @@ export default function Dashboard() {
             priority={priority}
             platform={platform}
             status={status}
-            locationFilter={locationFilter}
             categoryFilter={categoryFilter}
             tagFilter={tagFilter}
             favoritesOnly={favoritesOnly}
@@ -207,7 +224,7 @@ export default function Dashboard() {
             difficulty={difficulty}
             segment={segment}
             locationRegion={locationRegion}
-            locations={distinctLocations}
+            nameSearch={nameSearch}
             regions={distinctRegions}
             categories={distinctCategories}
             tags={distinctTags}
@@ -215,7 +232,6 @@ export default function Dashboard() {
             onPriorityChange={setPriority}
             onPlatformChange={setPlatform}
             onStatusChange={setStatus}
-            onLocationChange={setLocationFilter}
             onCategoryChange={setCategoryFilter}
             onTagChange={setTagFilter}
             onFavoritesChange={setFavoritesOnly}
@@ -223,12 +239,15 @@ export default function Dashboard() {
             onDifficultyChange={setDifficulty}
             onSegmentChange={setSegment}
             onRegionChange={setLocationRegion}
+            onNameSearchChange={setNameSearch}
+            onClearFilters={handleClearFilters}
             onExport={handleExport}
             totalCount={displayedLeads.length}
           />
           <LeadsTable
             leads={displayedLeads}
             compareIds={compareIds}
+            onDelete={handleDelete}
             onToggleCompare={(id) => {
               setCompareIds((prev) => {
                 const next = new Set(prev);
@@ -278,6 +297,7 @@ export default function Dashboard() {
           lead={comparatorLead}
           onClose={() => setComparatorLead(null)}
           onUpdate={handleUpdate}
+          onDelete={(id) => { handleDelete(id); setComparatorLead(null); }}
         />
       )}
     </main>

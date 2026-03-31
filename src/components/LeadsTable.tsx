@@ -23,6 +23,7 @@ interface LeadsTableProps {
       is_favorite?: boolean;
     }
   ) => void;
+  onDelete?: (id: number) => void;
 }
 
 // ─── Ceibo Fit config ─────────────────────────────────────────────────────────
@@ -39,9 +40,9 @@ const contactStatusBadge: Record<LeadStatus, string> = {
   interested:    "bg-ceibo-950 text-ceibo-400 border-ceibo-800",
 };
 const contactStatusLabel: Record<LeadStatus, string> = {
-  not_contacted: "Not contacted",
-  contacted:     "Contacted",
-  interested:    "Interested",
+  not_contacted: "Sin contactar",
+  contacted:     "Contactado",
+  interested:    "Interesado",
 };
 
 const VALUE_BADGE: Record<string, { label: string; className: string }> = {
@@ -148,7 +149,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 // ─── Main table ───────────────────────────────────────────────────────────────
-export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate }: LeadsTableProps) {
+export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDelete }: LeadsTableProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [messageLead, setMessageLead] = useState<Lead | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("lead_score");
@@ -399,6 +400,7 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate }: Lea
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onUpdate={onUpdate}
+          onDelete={onDelete ? (id) => { onDelete(id); setSelectedLead(null); } : undefined}
         />
       )}
 

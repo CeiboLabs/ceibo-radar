@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { buildDailyList } from "@/lib/sales/dailyListEngine";
 import type { Lead } from "@/lib/types";
 
 export async function GET() {
-  const db = getDb();
-  // Exclude permanently closed leads
-  const leads = db
-    .prepare(
-      "SELECT * FROM leads WHERE sequence_stage IS NULL OR sequence_stage != 'done' ORDER BY lead_score DESC NULLS LAST"
-    )
-    .all() as Lead[];
+  const { data: leads } = await supabase
+    .from("leads")
+    .select("*")
+    .neq("sequence_stage", "done")
+    .order("lead_score", { ascending: false, nullsFirst: false });
 
-  const sections = buildDailyList(leads);
+  const sections = buildDailyList((leads ?? []) as unknown as Lead[]);
   return NextResponse.json({ sections, generated_at: new Date().toISOString() });
 }

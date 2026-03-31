@@ -171,6 +171,12 @@ export default function TodayPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    setSelectedLead(null);
+    await fetchToday();
+  };
+
   const totalLeads = sections.reduce((acc, s) => acc + s.leads.length, 0);
 
   return (
@@ -242,6 +248,7 @@ export default function TodayPage() {
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onUpdate={handleUpdate}
+          onDelete={handleDelete}
         />
       )}
       {messageLead && (

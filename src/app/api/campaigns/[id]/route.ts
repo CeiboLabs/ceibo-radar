@@ -1,24 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import type { Lead } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const db = getDb();
-  const campaign = db.prepare("SELECT * FROM campaigns WHERE id = ?").get(id);
-  if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const leads = db.prepare(`
-    SELECT l.* FROM leads l
-    JOIN campaign_leads cl ON cl.lead_id = l.id
-    WHERE cl.campaign_id = ?
-    ORDER BY l.lead_score DESC NULLS LAST
-  `).all(id) as Lead[];
+  const [{ data: campaign, error }, { data: leads }] = await Promise.all([
+    supabase.from("campaigns").select("*").eq("id", id).single(),
+    supabase
+      .from("leads")
+      .select("leads!inner(*)")
+      .eq("campaign_leads.campaign_id" as never, id)
+      .order("lead_score", { ascending: false, nullsFirst: false }),
+  ]);
 
-  return NextResponse.json({ campaign, leads });
+  if (error || !campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Fetch leads via campaign_leads join
+  const { data: campaignLeads } = await supabase
+    .from("campaign_leads")
+    .select("leads(*)")
+    .eq("campaign_id", id);
+
+  const leadsData = ((campaignLeads ?? []) as { leads: { lead_score?: number } | null }[])
+    .map((r) => r.leads)
+    .filter(Boolean)
+    .sort((a, b) => ((b?.lead_score ?? 0) - (a?.lead_score ?? 0)));
+
+  return NextResponse.json({ campaign, leads: leadsData });
 }
 
 export async function PATCH(
@@ -27,23 +38,26 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const { name, description, status, notes } = await req.json();
-  const db = getDb();
-  const fields: string[] = [];
-  const values: (string | number)[] = [];
 
-  if (name !== undefined) { fields.push("name = ?"); values.push(name); }
-  if (description !== undefined) { fields.push("description = ?"); values.push(description); }
-  if (status !== undefined) { fields.push("status = ?"); values.push(status); }
-  if (notes !== undefined) { fields.push("notes = ?"); values.push(notes); }
+  const update: Record<string, unknown> = {};
+  if (name !== undefined)        update.name = name;
+  if (description !== undefined) update.description = description;
+  if (status !== undefined)      update.status = status;
+  if (notes !== undefined)       update.notes = notes;
 
-  if (fields.length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
 
-  fields.push("updated_at = datetime('now')");
-  values.push(id);
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update(update)
+    .eq("id", id)
+    .select()
+    .single();
 
-  db.prepare(`UPDATE campaigns SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-  const updated = db.prepare("SELECT * FROM campaigns WHERE id = ?").get(id);
-  return NextResponse.json(updated);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 export async function DELETE(
@@ -51,6 +65,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  getDb().prepare("DELETE FROM campaigns WHERE id = ?").run(id);
+  const { error } = await supabase.from("campaigns").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }

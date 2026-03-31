@@ -56,14 +56,22 @@ function CreateModal({ onClose, onCreate }: {
   );
 }
 
+const CAMPAIGN_STATUSES = [
+  { value: "active",   label: "Activa",    className: "text-ceibo-500 bg-ceibo-950 border-ceibo-800" },
+  { value: "paused",   label: "Pausada",   className: "text-yellow-500 bg-yellow-950 border-yellow-800" },
+  { value: "archived", label: "Archivada", className: "text-gray-400 bg-gray-800 border-gray-700" },
+] as const;
+
 // ─── Campaign Detail Panel ────────────────────────────────────────────────────
-function CampaignDetail({ campaign, onClose, onDelete }: {
+function CampaignDetail({ campaign, onClose, onDelete, onUpdate }: {
   campaign: Campaign;
   onClose: () => void;
   onDelete: (id: number) => void;
+  onUpdate: (id: number, data: Partial<Campaign>) => void;
 }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   useEffect(() => {
     fetch(`/api/campaigns/${campaign.id}`)
@@ -87,6 +95,18 @@ function CampaignDetail({ campaign, onClose, onDelete }: {
     onClose();
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    setStatusSaving(true);
+    const res = await fetch(`/api/campaigns/${campaign.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const updated = await res.json();
+    onUpdate(campaign.id, updated);
+    setStatusSaving(false);
+  };
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
       <div className="flex items-start justify-between">
@@ -103,6 +123,27 @@ function CampaignDetail({ campaign, onClose, onDelete }: {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+      </div>
+
+      {/* Status selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">Estado:</span>
+        <div className="flex gap-1.5">
+          {CAMPAIGN_STATUSES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => handleStatusChange(s.value)}
+              disabled={statusSaving || campaign.status === s.value}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors disabled:cursor-default ${
+                campaign.status === s.value
+                  ? s.className
+                  : "text-gray-600 bg-gray-800 border-gray-700 hover:text-gray-400 hover:border-gray-600"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -159,6 +200,10 @@ export default function CampaignsPage() {
   const onDelete = (id: number) => {
     setCampaigns((prev) => prev.filter((c) => c.id !== id));
     if (selected?.id === id) setSelected(null);
+  };
+  const onUpdate = (id: number, data: Partial<Campaign>) => {
+    setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, ...data } : c));
+    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, ...data } : prev);
   };
 
   return (
@@ -217,6 +262,7 @@ export default function CampaignsPage() {
               campaign={selected}
               onClose={() => setSelected(null)}
               onDelete={onDelete}
+              onUpdate={onUpdate}
             />
           ) : (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center h-full flex items-center justify-center">
