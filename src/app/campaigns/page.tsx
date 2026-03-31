@@ -193,7 +193,7 @@ export default function CampaignsPage() {
   useEffect(() => {
     fetch("/api/campaigns")
       .then((r) => r.json())
-      .then((data) => { setCampaigns(data); setLoading(false); });
+      .then((data) => { setCampaigns(Array.isArray(data) ? data : []); setLoading(false); });
   }, []);
 
   const onCreate = (c: Campaign) => setCampaigns((prev) => [c, ...prev]);

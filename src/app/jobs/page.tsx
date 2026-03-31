@@ -144,7 +144,7 @@ export default function JobsPage() {
   const [runProgress, setRunProgress] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    fetch("/api/jobs").then((r) => r.json()).then((data) => { setJobs(data); setLoading(false); });
+    fetch("/api/jobs").then((r) => r.json()).then((data) => { setJobs(Array.isArray(data) ? data : []); setLoading(false); });
   }, []);
 
   const toggleJob = async (job: ScrapeJob) => {
@@ -205,7 +205,7 @@ export default function JobsPage() {
         body: JSON.stringify({ last_run_at: new Date().toISOString(), leads_found_last: totalFound }),
       });
       const refreshed = await fetch("/api/jobs").then((r) => r.json());
-      setJobs(refreshed);
+      setJobs(Array.isArray(refreshed) ? refreshed : []);
       setRunProgress((prev) => ({ ...prev, [job.id]: `Completado — ${totalFound} leads encontrados` }));
     } catch {
       setRunProgress((prev) => ({ ...prev, [job.id]: "Error al ejecutar" }));

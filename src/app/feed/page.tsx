@@ -179,8 +179,8 @@ export default function FeedPage() {
   const fetchLeads = useCallback(async () => {
     const res = await fetch("/api/leads?sort=recent");
     const data = await res.json();
-    // Sort by created_at descending
-    const sorted = (data as Lead[]).sort(
+    const arr = Array.isArray(data) ? data as Lead[] : [];
+    const sorted = arr.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
     setLeads(sorted);
