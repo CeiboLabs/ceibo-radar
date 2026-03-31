@@ -47,7 +47,7 @@ export default function Dashboard() {
     if (locationRegion !== "all") params.set("region", locationRegion);
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
-    setLeads(data);
+    setLeads(Array.isArray(data) ? data : []);
   }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
