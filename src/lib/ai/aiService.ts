@@ -21,7 +21,7 @@ function getClient(): OpenAI {
 export async function callAI(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 900
+  maxTokens = 400
 ): Promise<string> {
   if (!isAiAvailable()) {
     throw new Error("OPENAI_API_KEY not configured");

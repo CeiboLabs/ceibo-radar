@@ -1,10 +1,7 @@
 import type { Lead } from "@/lib/types";
 import type { NicheStats } from "./types";
 
-export const LEAD_SYSTEM_PROMPT = `Eres un analista de ventas digitales para Ceibo Labs, una agencia web uruguaya. \
-Analizas leads de negocios y respondes ÚNICAMENTE con JSON válido. \
-Sé conciso, comercial y práctico. Enfocate en brechas digitales y oportunidades de negocio. \
-Toda tu respuesta debe estar en español.`;
+export const LEAD_SYSTEM_PROMPT = `Analista de ventas de Ceibo Labs (agencia web Uruguay). Responde SOLO JSON válido en español. Breve y comercial.`;
 
 export function buildLeadPrompt(lead: Lead): string {
   const lines: string[] = [
@@ -38,30 +35,16 @@ export function buildLeadPrompt(lead: Lead): string {
 
   const prompt = lines.join("\n");
 
-  return `Analiza este lead de negocio y responde únicamente con JSON válido:
+  return `Analiza este lead y responde SOLO con JSON:
 
 ${prompt}
 
-Responde con exactamente esta estructura JSON:
-{
-  "summary": "Resumen comercial de 2-4 líneas de este negocio y la oportunidad. Conciso y directo.",
-  "analysis": {
-    "digital_weaknesses": ["debilidad 1", "debilidad 2"],
-    "business_opportunities": ["oportunidad 1", "oportunidad 2"],
-    "digital_maturity_assessment": "Una oración evaluando su nivel de madurez digital.",
-    "missing_conversion_channels": ["canal 1", "canal 2"]
-  },
-  "premium_tier": "$"
+{"summary":"2 líneas max sobre oportunidad","analysis":{"digital_weaknesses":["max 2"],"business_opportunities":["max 2"],"digital_maturity_assessment":"1 oración","missing_conversion_channels":["max 2"]},"premium_tier":"$"}
+
+premium_tier: "$"=bajo valor, "$$"=medio, "$$$"=alto. Todo en español.`;
 }
 
-Para premium_tier: "$" = cliente de bajo valor, "$$" = valor medio, "$$$" = alto valor.
-Considera: categoría, ubicación, señales de marca, madurez digital, tamaño del negocio.
-Máximo 2-3 items por array. Todo en español. Breve y útil.`;
-}
-
-export const NICHES_SYSTEM_PROMPT = `Eres un analista estratégico para Ceibo Labs, una agencia web uruguaya. \
-Analizas estadísticas de leads y respondes ÚNICAMENTE con JSON válido. \
-Identifica los mejores nichos de mercado para prospectar. Todo en español.`;
+export const NICHES_SYSTEM_PROMPT = `Analista estratégico de Ceibo Labs (agencia web Uruguay). Responde SOLO JSON válido en español.`;
 
 export function buildNichesPrompt(stats: NicheStats[]): string {
   const statsText = stats
@@ -71,24 +54,9 @@ export function buildNichesPrompt(stats: NicheStats[]): string {
     )
     .join("\n");
 
-  return `Analiza estas estadísticas de categorías de negocios para una agencia web uruguaya buscando nuevos clientes.
-
-Datos por categoría (total leads, sin website, website deficiente, score promedio):
+  return `Top 5 nichos para agencia web Uruguay. Datos (categoría: total, sin web %, score):
 ${statsText}
 
-Identifica los TOP 5 nichos más prometedores. Considera: alto porcentaje sin web, mala presencia digital, atractivo comercial y valor del cliente.
-
-Responde únicamente con JSON válido:
-{
-  "niches": [
-    {
-      "category": "nombre de categoría",
-      "rank": 1,
-      "opportunity_level": "high",
-      "explanation": "Breve explicación de por qué esta categoría es atractiva para nuestra agencia"
-    }
-  ]
-}
-
-opportunity_level debe ser "high", "medium" o "low". Máximo 5 nichos. Todo en español.`;
+{"niches":[{"category":"...","rank":1,"opportunity_level":"high","explanation":"1 oración"}]}
+opportunity_level: high/medium/low. Max 5. Español.`;
 }

@@ -6,7 +6,7 @@ import { parseNichesResult } from "@/lib/ai/aiParsers";
 import type { NicheStats } from "@/lib/ai/types";
 
 const CACHE_KEY = "niches_analysis";
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 72 * 60 * 60 * 1000;
 
 export async function GET() {
   // Check cache
@@ -68,7 +68,7 @@ export async function GET() {
   }
 
   try {
-    const raw = await callAI(NICHES_SYSTEM_PROMPT, buildNichesPrompt(stats), 1000);
+    const raw = await callAI(NICHES_SYSTEM_PROMPT, buildNichesPrompt(stats), 500);
     const result = parseNichesResult(raw);
 
     // Upsert cache
