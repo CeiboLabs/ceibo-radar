@@ -37,6 +37,9 @@ export async function GET(req: NextRequest) {
     .order("lead_score", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[leads] Supabase error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+  }
   return NextResponse.json(leads ?? []);
 }
