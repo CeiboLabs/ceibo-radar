@@ -354,7 +354,10 @@ export async function POST(req: NextRequest) {
               message: `✓ ${business.name}${wi.hasWebsite ? ` (web: ${wi.websiteQuality})` : " (sin web)"}${business.rating ? ` ★${business.rating}` : ""}`,
             });
           }
-        } catch {}
+        } catch (e) {
+          console.error("[search] upsert error for", business.name, e);
+          await send({ type: "progress", message: `✗ Error guardando ${business.name}: ${e instanceof Error ? e.message : String(e)}` });
+        }
       }
     }
 
