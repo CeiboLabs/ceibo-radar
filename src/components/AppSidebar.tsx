@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 
 // SVG icons as components
 function IconLeads() { return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>; }
@@ -31,22 +30,17 @@ export function AppSidebar() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
-    try {
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
-        setUserEmail(data.user?.email ?? null);
-      });
-    } catch {
-      // env vars not available (build without NEXT_PUBLIC_ vars)
-    }
+    fetch("/api/auth/me")
+      .then(r => r.json())
+      .then(d => setUserEmail(d.email ?? null))
+      .catch(() => {});
   }, []);
 
   if (path === "/login") return null;
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   };

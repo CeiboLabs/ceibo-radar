@@ -6,8 +6,8 @@ export async function middleware(request: NextRequest) {
 
   // Server-side: NEXT_PUBLIC_ vars may not be baked into the bundle on first deploy,
   // so fall back to non-public vars (middleware always has access to all env vars).
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
   if (!supabaseUrl || !supabaseAnonKey) {
     // Env vars not configured — block all access except /login
