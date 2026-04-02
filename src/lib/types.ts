@@ -1,4 +1,4 @@
-export type Platform = "google_maps" | "instagram";
+export type Platform = "google_maps" | "instagram" | "paginas_amarillas" | "facebook";
 
 // ─── Enrichment ───────────────────────────────────────────────────────────────
 export interface EnrichmentData {

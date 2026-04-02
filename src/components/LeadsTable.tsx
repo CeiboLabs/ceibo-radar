@@ -27,6 +27,14 @@ interface LeadsTableProps {
   onDelete?: (id: number) => void;
 }
 
+// ─── Platform labels ──────────────────────────────────────────────────────────
+const PLATFORM_LABEL: Record<string, string> = {
+  google_maps: "Google Maps",
+  instagram: "Instagram",
+  paginas_amarillas: "Páginas Amarillas",
+  facebook: "Facebook",
+};
+
 // ─── Ceibo Fit config ─────────────────────────────────────────────────────────
 const fitConfig: Record<LeadPriority, { emoji: string; label: string; dot: string; row: string; badge: string }> = {
   high:   { emoji: "🔥", label: "Perfect Fit", dot: "bg-red-500",    row: "border-l-2 border-red-800",    badge: "bg-red-950/60 text-red-300 border-red-900" },
@@ -320,7 +328,7 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
 
                     <td className="px-4 py-3">
                       <span className="text-gray-400 text-xs">
-                        {lead.platform === "google_maps" ? "Google Maps" : "Instagram"}
+                        {PLATFORM_LABEL[lead.platform] ?? lead.platform}
                       </span>
                     </td>
 

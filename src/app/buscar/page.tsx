@@ -47,6 +47,13 @@ const REGION_LABELS: Record<string, string> = {
   interior: "Interior",
 };
 
+const PLATFORM_LABELS: Record<Platform, string> = {
+  google_maps: "Google Maps",
+  instagram: "Instagram",
+  paginas_amarillas: "Páginas Amarillas",
+  facebook: "Facebook",
+};
+
 const BY_REGION = (["metro", "costa", "litoral", "norte", "interior"] as const).map(r => ({
   region: r,
   label: REGION_LABELS[r],
@@ -92,7 +99,7 @@ export default function BuscarPage() {
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(
     new Set(["Montevideo, Uruguay"])
   );
-  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram"]);
+  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram", "paginas_amarillas", "facebook"]);
   const [depth, setDepth] = useState<DepthKey>("standard");
   const [showAllDepts, setShowAllDepts] = useState(false);
 
@@ -347,8 +354,8 @@ export default function BuscarPage() {
             {/* Platforms */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Plataformas</label>
-              <div className="flex gap-2">
-                {(["google_maps", "instagram"] as Platform[]).map(p => (
+              <div className="flex flex-wrap gap-2">
+                {(["google_maps", "instagram", "paginas_amarillas", "facebook"] as Platform[]).map(p => (
                   <button
                     key={p}
                     type="button"
@@ -359,7 +366,7 @@ export default function BuscarPage() {
                         : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
                     }`}
                   >
-                    {p === "google_maps" ? "Google Maps" : "Instagram"}
+                    {PLATFORM_LABELS[p]}
                   </button>
                 ))}
               </div>
@@ -484,7 +491,10 @@ export default function BuscarPage() {
                             ? item.locations[0].replace(", Uruguay", "")
                             : `${item.locations.length} lugares`}
                           {" · "}
-                          {item.platforms.map(p => p === "google_maps" ? "Maps" : "IG").join(" + ")}
+                          {item.platforms.map(p => {
+                            const abbrev: Record<string, string> = { google_maps: "Maps", instagram: "IG", paginas_amarillas: "PA", facebook: "FB" };
+                            return abbrev[p] ?? p;
+                          }).join(" + ")}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-ceibo-400 font-medium">
