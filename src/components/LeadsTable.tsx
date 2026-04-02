@@ -5,6 +5,7 @@ import type { Lead, LeadPriority, LeadStatus, WebsiteQuality } from "@/lib/types
 import type { ScoreBreakdown } from "@/lib/lead-score";
 import { getNextAction } from "@/lib/sales/nextActionEngine";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
+import { classifyPhone } from "@/lib/phone-classifier";
 import { LeadModal } from "./LeadModal";
 import { MessageModal } from "./MessageModal";
 
@@ -323,9 +324,27 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
                       <WebsiteBadge lead={lead} />
                     </td>
 
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      <div>{lead.phone ?? "-"}</div>
-                      <div>{lead.email ?? ""}</div>
+                    <td className="px-4 py-3 text-xs">
+                      {lead.phone ? (() => {
+                        const phoneInfo = classifyPhone(lead.phone);
+                        return (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-gray-400 font-mono">{lead.phone}</span>
+                            {phoneInfo.type !== "unknown" && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${
+                                phoneInfo.type === "mobile"
+                                  ? "bg-ceibo-950 text-ceibo-500 border-ceibo-900"
+                                  : "bg-gray-800 text-gray-500 border-gray-700"
+                              }`}>
+                                {phoneInfo.type === "mobile" ? "WhatsApp" : "Fijo"}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })() : (
+                        <span className="text-gray-700">—</span>
+                      )}
+                      {lead.email && <div className="text-gray-500 mt-0.5">{lead.email}</div>}
                     </td>
 
                     <td className="px-4 py-3 text-gray-400 text-xs max-w-xs truncate">

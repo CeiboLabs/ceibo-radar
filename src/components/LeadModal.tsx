@@ -10,6 +10,7 @@ import type { AiLeadAnalysis } from "@/lib/ai/types";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
 import { getContactTiming } from "@/lib/sales/contactTimingEngine";
 import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
+import { classifyPhone } from "@/lib/phone-classifier";
 
 const SEQUENCE_STAGES = [
   { key: "none",          label: "Sin iniciar"    },
@@ -472,19 +473,43 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Información de contacto</h3>
                 <div className="space-y-2 text-sm">
-                  {lead.phone && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 w-20 shrink-0">Teléfono</span>
-                      <span className="text-gray-200 flex-1 font-mono text-xs">{lead.phone}</span>
-                      <button
-                        onClick={() => handleContactAction("whatsapp")}
-                        disabled={contactLoading === "whatsapp"}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 disabled:bg-gray-800 text-ceibo-300 border border-ceibo-700 transition-colors"
-                      >
-                        {contactLoading === "whatsapp" ? "..." : "WhatsApp"}
-                      </button>
-                    </div>
-                  )}
+                  {lead.phone && (() => {
+                    const phoneInfo = classifyPhone(lead.phone);
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-20 shrink-0">Teléfono</span>
+                        <span className="text-gray-200 flex-1 font-mono text-xs">{lead.phone}</span>
+                        {phoneInfo.type !== "unknown" && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded border font-medium shrink-0 ${
+                            phoneInfo.type === "mobile"
+                              ? "bg-ceibo-950 text-ceibo-400 border-ceibo-800"
+                              : "bg-gray-800 text-gray-500 border-gray-700"
+                          }`}>
+                            {phoneInfo.type === "mobile" ? "📱 Móvil" : "☎ Fijo"}
+                          </span>
+                        )}
+                        {phoneInfo.canWhatsapp ? (
+                          <a
+                            href={phoneInfo.whatsappUrl!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleContactAction("whatsapp")}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-300 border border-ceibo-700 transition-colors shrink-0"
+                          >
+                            WhatsApp ↗
+                          </a>
+                        ) : (
+                          <button
+                            onClick={() => handleContactAction("whatsapp")}
+                            disabled={contactLoading === "whatsapp"}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 disabled:bg-gray-800 text-ceibo-300 border border-ceibo-700 transition-colors shrink-0"
+                          >
+                            {contactLoading === "whatsapp" ? "..." : "WhatsApp"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {lead.email && (
                     <div className="flex items-center gap-2">
                       <span className="text-gray-500 w-20 shrink-0">Email</span>
