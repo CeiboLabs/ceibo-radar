@@ -70,6 +70,12 @@ export async function scrapeInstagram(
           if (resp?.ok()) {
             const content = await page.content();
 
+            // Instagram login wall — no profile data available
+            if (content.includes("Log in to Instagram") || content.includes("Iniciar sesión en Instagram")) {
+              console.warn(`[Instagram] Login wall hit for @${username}, skipping`);
+              continue;
+            }
+
             // Try structured data first (most reliable)
             const ldJsonMatch = content.match(
               /<script type="application\/ld\+json">([\s\S]*?)<\/script>/
@@ -200,19 +206,36 @@ async function ddgSearch(query: string, excluded: Set<string>): Promise<string[]
     }
 
     const html = await res.text();
-    const hrefPattern =
-      /href=["'](https?:\/\/www\.instagram\.com\/([a-zA-Z0-9._]{2,30})\/?)['"]/g;
 
     const usernames: string[] = [];
-    let match: RegExpExecArray | null;
+    const seen = new Set<string>();
 
-    while ((match = hrefPattern.exec(html)) !== null) {
-      const username = match[2];
-      if (!excluded.has(username.toLowerCase())) {
+    // Pattern 1: direct href (https://www.instagram.com/username/)
+    const directPattern =
+      /href=["']https?:\/\/(?:www\.)?instagram\.com\/([a-zA-Z0-9._]{2,30})\/?["']/g;
+
+    // Pattern 2: DDG redirect URL (?uddg=https%3A%2F%2F...instagram.com%2Fusername)
+    const ddgRedirectPattern =
+      /uddg=(https?(?:%3A|:)(?:%2F%2F|\/\/)(?:www\.)?instagram\.com(?:%2F|\/)([a-zA-Z0-9._]{2,30}))/gi;
+
+    // Pattern 3: plain text mentions instagram.com/username
+    const textPattern =
+      /instagram\.com\/([a-zA-Z0-9._]{2,30})(?:\/|["'\s<]|$)/g;
+
+    const addUsername = (username: string) => {
+      const u = username.toLowerCase();
+      if (!excluded.has(u) && !seen.has(u)) {
+        seen.add(u);
         usernames.push(username);
       }
-    }
+    };
 
+    let match: RegExpExecArray | null;
+    while ((match = directPattern.exec(html)) !== null) addUsername(match[1]);
+    while ((match = ddgRedirectPattern.exec(html)) !== null) addUsername(match[2]);
+    while ((match = textPattern.exec(html)) !== null) addUsername(match[1]);
+
+    console.log(`[Instagram] DDG raw HTML length: ${html.length}, usernames found: ${usernames.length}`);
     return usernames;
   } catch (err) {
     console.error("[Instagram] DDG search failed:", (err as Error).message);
