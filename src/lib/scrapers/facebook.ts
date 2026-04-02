@@ -64,11 +64,13 @@ export async function scrapeFacebook(
 ): Promise<ScrapedBusiness[]> {
   console.log(`[Facebook] Starting search: "${keyword}" in "${location}"`);
 
+  // NOTE: site: operator returns 0 results from server IPs on Bing.
+  // Use plain keyword queries and filter to facebook.com URLs programmatically.
   const allQueries: string[] = [
-    `site:facebook.com "${keyword}" "${location}"`,
-    `site:facebook.com/pages "${keyword}" "${location}"`,
     `${keyword} ${location} facebook página`,
-    `${keyword} ${location} facebook negocio`,
+    `${keyword} ${location} facebook.com negocio`,
+    `"${keyword}" "${location}" facebook`,
+    `${keyword} Uruguay facebook página negocios`,
   ];
 
   const queries = allQueries.slice(0, Math.max(1, queryCount));

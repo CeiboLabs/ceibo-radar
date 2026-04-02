@@ -96,10 +96,12 @@ export async function scrapePaginasAmarillas(
 ): Promise<ScrapedBusiness[]> {
   console.log(`[PáginasAmarillas] Starting search: "${keyword}" in "${location}"`);
 
+  // NOTE: site: operator returns 0 results from server IPs on Bing.
+  // Use plain keyword queries and filter by domain programmatically.
   const queries = [
-    `site:paginasamarillas.com.uy ${keyword} ${location}`,
-    `site:paginasamarillas.com.uy "${keyword}" Uruguay`,
-    `${keyword} ${location} site:paginasamarillas.com.uy`,
+    `${keyword} ${location} paginasamarillas.com.uy`,
+    `"${keyword}" Uruguay paginasamarillas.com.uy`,
+    `${keyword} ${location} páginas amarillas uruguay`,
   ];
 
   const seen = new Set<string>();
