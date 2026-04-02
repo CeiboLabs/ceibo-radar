@@ -185,17 +185,16 @@ async function ddgSearch(query: string, excluded: Set<string>): Promise<string[]
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
-    const res = await fetch("https://lite.duckduckgo.com/lite/", {
-      method: "POST",
+    const url = `https://html.duckduckgo.com/html/?${new URLSearchParams({ q: query }).toString()}`;
+    const res = await fetch(url, {
+      method: "GET",
       signal: controller.signal,
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es,en;q=0.9",
       },
-      body: new URLSearchParams({ q: query }).toString(),
     });
 
     clearTimeout(timeout);
