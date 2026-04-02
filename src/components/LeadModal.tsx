@@ -559,10 +559,22 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
                   </button>
                 </div>
               )}
-              <div className="flex gap-2">
-                <span className="text-gray-500 w-20 shrink-0">Perfil</span>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-20 shrink-0">
+                  {lead.platform === "instagram" ? "Instagram" : "Perfil"}
+                </span>
                 <a href={lead.profile_url} target="_blank" rel="noopener noreferrer"
-                  className="text-ceibo-400 hover:underline truncate text-xs">{lead.profile_url}</a>
+                  className="text-ceibo-400 hover:underline truncate text-xs flex-1">{lead.profile_url}</a>
+                {lead.platform === "instagram" && (
+                  <a
+                    href={lead.profile_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs px-2.5 py-1 rounded-lg bg-pink-950 hover:bg-pink-900 text-pink-300 border border-pink-800 transition-colors shrink-0"
+                  >
+                    Abrir DM
+                  </a>
+                )}
               </div>
               {lead.website_url && (
                 <div className="flex gap-2">

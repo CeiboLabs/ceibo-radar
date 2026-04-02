@@ -37,11 +37,12 @@ async function searchInstagramProfiles(
   location: string,
   queryCount: number
 ): Promise<InstagramProfile[]> {
+  // Use broader queries first — site: + quotes returns very few results
   const queries = [
-    `site:instagram.com "${keyword}" "${location}"`,
+    `${keyword} ${location} instagram`,
     `site:instagram.com ${keyword} ${location}`,
     `"${keyword}" "${location}" site:instagram.com`,
-    `site:instagram.com "${keyword}" ${location} negocio`,
+    `${keyword} instagram ${location} negocio`,
   ].slice(0, Math.max(1, queryCount));
 
   const seen = new Set<string>();
