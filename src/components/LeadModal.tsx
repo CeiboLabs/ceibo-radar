@@ -40,9 +40,11 @@ interface LeadModalProps {
 
 // ─── Config maps ──────────────────────────────────────────────────────────────
 const statusConfig: Record<LeadStatus, { label: string; className: string }> = {
-  not_contacted: { label: "Sin contactar", className: "bg-gray-700 text-gray-300" },
-  contacted:     { label: "Contactado",    className: "bg-blue-900 text-blue-300"   },
-  interested:    { label: "Interesado",    className: "bg-ceibo-900 text-ceibo-300" },
+  not_contacted: { label: "Sin contactar",    className: "bg-gray-700 text-gray-300"       },
+  contacted:     { label: "Contactado",        className: "bg-blue-900 text-blue-300"       },
+  interested:    { label: "Interesado",        className: "bg-ceibo-900 text-ceibo-300"     },
+  proposal_sent: { label: "Propuesta enviada", className: "bg-purple-900 text-purple-300"  },
+  closed_won:    { label: "Cerrado",           className: "bg-emerald-900 text-emerald-300" },
 };
 const qualityConfig: Record<WebsiteQuality, { label: string; bar: string; text: string }> = {
   good:              { label: "GOOD WEBSITE", bar: "bg-ceibo-500",  text: "text-ceibo-400"  },

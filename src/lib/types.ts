@@ -54,7 +54,7 @@ export interface SearchConfig {
   maxScrolls: number; // controls Google Maps depth and Instagram query count
 }
 
-export type LeadStatus = "not_contacted" | "contacted" | "interested";
+export type LeadStatus = "not_contacted" | "contacted" | "interested" | "proposal_sent" | "closed_won";
 
 export type WebsiteQuality = "good" | "needs_improvement" | "poor";
 

@@ -117,6 +117,32 @@ export default function Dashboard() {
     window.open(`/api/export?${params}`, "_blank");
   };
 
+  const exportCSV = () => {
+    const headers = ["Nombre", "Teléfono", "Email", "Categoría", "Ubicación", "Website", "Estado", "Score", "Plataforma", "Notas"];
+    const rows = displayedLeads.map(l => [
+      l.name,
+      l.phone ?? "",
+      l.email ?? "",
+      l.category ?? "",
+      l.location ?? "",
+      l.website_url ?? "",
+      l.status,
+      String(l.lead_score ?? ""),
+      l.platform,
+      l.notes ?? "",
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
       {/* Leads */}
@@ -125,6 +151,13 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-200">Leads</h2>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
+            <button
+              onClick={exportCSV}
+              disabled={displayedLeads.length === 0}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-40"
+            >
+              ↓ CSV ({displayedLeads.length})
+            </button>
             <Link
               href="/buscar"
               className="text-xs px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-medium transition-colors"

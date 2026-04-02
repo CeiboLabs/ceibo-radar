@@ -39,11 +39,15 @@ const contactStatusBadge: Record<LeadStatus, string> = {
   not_contacted: "bg-gray-800 text-gray-400 border-gray-700",
   contacted:     "bg-blue-950 text-blue-400 border-blue-800",
   interested:    "bg-ceibo-950 text-ceibo-400 border-ceibo-800",
+  proposal_sent: "bg-purple-950 text-purple-400 border-purple-800",
+  closed_won:    "bg-emerald-950 text-emerald-400 border-emerald-800",
 };
 const contactStatusLabel: Record<LeadStatus, string> = {
   not_contacted: "Sin contactar",
   contacted:     "Contactado",
   interested:    "Interesado",
+  proposal_sent: "Propuesta",
+  closed_won:    "Cerrado",
 };
 
 const VALUE_BADGE: Record<string, { label: string; className: string }> = {

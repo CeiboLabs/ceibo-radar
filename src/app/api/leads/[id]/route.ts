@@ -33,7 +33,7 @@ export async function PATCH(
 
   if (status !== undefined) {
     update.status = status;
-    if (status === "contacted" || status === "interested") {
+    if (status === "contacted" || status === "interested" || status === "proposal_sent") {
       update.last_contacted_at = new Date().toISOString();
     }
   }
@@ -59,6 +59,8 @@ export async function PATCH(
       not_contacted: "Sin contactar",
       contacted: "Contactado",
       interested: "Interesado",
+      proposal_sent: "Propuesta enviada",
+      closed_won: "Cerrado",
     };
     logEvent(leadId, "status_changed", `Estado cambiado a "${labels[status] ?? status}"`);
   }

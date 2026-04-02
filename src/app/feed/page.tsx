@@ -38,9 +38,11 @@ const priorityDot: Record<LeadPriority, string> = {
   low:    "bg-gray-600",
 };
 const statusBadge: Record<LeadStatus, { label: string; cls: string }> = {
-  not_contacted: { label: "Sin contactar", cls: "text-gray-500 bg-gray-800 border-gray-700"   },
-  contacted:     { label: "Contactado",    cls: "text-blue-400 bg-blue-950 border-blue-800"   },
-  interested:    { label: "Interesado",    cls: "text-ceibo-400 bg-ceibo-950 border-ceibo-800" },
+  not_contacted: { label: "Sin contactar", cls: "text-gray-500 bg-gray-800 border-gray-700"       },
+  contacted:     { label: "Contactado",    cls: "text-blue-400 bg-blue-950 border-blue-800"       },
+  interested:    { label: "Interesado",    cls: "text-ceibo-400 bg-ceibo-950 border-ceibo-800"    },
+  proposal_sent: { label: "Propuesta",     cls: "text-purple-400 bg-purple-950 border-purple-800" },
+  closed_won:    { label: "Cerrado",       cls: "text-emerald-400 bg-emerald-950 border-emerald-800" },
 };
 
 // ─── Feed card ────────────────────────────────────────────────────────────────

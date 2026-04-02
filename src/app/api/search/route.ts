@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { scrapeGoogleMaps } from "@/lib/scrapers/google-maps";
 import { scrapeInstagram } from "@/lib/scrapers/instagram";
+import { extractContactsFromHtml, extractContactsFromText } from "@/lib/scrapers/contact-extractor";
 import { checkWebsite } from "@/lib/scrapers/website-checker";
 import { analyzeWebsite } from "@/lib/scrapers/website-quality";
 import { scorelead } from "@/lib/lead-score";
@@ -181,12 +182,40 @@ export async function POST(req: NextRequest) {
         const business = newBusinesses[idx];
         const wi = websiteInfos[idx];
 
+        // Enrich contact data from website HTML if missing
+        let enrichedPhone = business.phone ?? null;
+        let enrichedEmail = business.email ?? null;
+
+        if (wi.hasWebsite && wi.websiteUrl && (!enrichedPhone || !enrichedEmail)) {
+          try {
+            const websiteRes = await fetch(wi.websiteUrl, {
+              headers: { "User-Agent": "Mozilla/5.0 (compatible; CeiboBot/1.0)" },
+              signal: AbortSignal.timeout(8000),
+            });
+            if (websiteRes.ok) {
+              const html = await websiteRes.text();
+              const extracted = extractContactsFromHtml(html, { phone: enrichedPhone, email: enrichedEmail });
+              if (extracted.phone && !enrichedPhone) enrichedPhone = extracted.phone;
+              if (extracted.email && !enrichedEmail) enrichedEmail = extracted.email;
+            }
+          } catch {
+            // Ignore errors — contact enrichment is best-effort
+          }
+        }
+
+        // Extract from Instagram bio if platform is instagram
+        if (business.platform === "instagram" && business.description) {
+          const extracted = extractContactsFromText(business.description, { phone: enrichedPhone, email: enrichedEmail });
+          if (extracted.phone && !enrichedPhone) enrichedPhone = extracted.phone;
+          if (extracted.email && !enrichedEmail) enrichedEmail = extracted.email;
+        }
+
         // Scoring
         const { score, priority, breakdown } = scorelead({
           has_website: wi.hasWebsite,
           website_quality: wi.websiteQuality,
-          phone: business.phone,
-          email: business.email,
+          phone: enrichedPhone ?? undefined,
+          email: enrichedEmail ?? undefined,
           location: business.location ?? location,
           description: business.description,
           platform: business.platform,
@@ -199,8 +228,8 @@ export async function POST(req: NextRequest) {
           website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
-          phone: business.phone ?? null,
-          email: business.email ?? null,
+          phone: enrichedPhone,
+          email: enrichedEmail,
           location: business.location ?? null,
           category: business.category ?? null,
         });
@@ -213,8 +242,8 @@ export async function POST(req: NextRequest) {
           website_quality_issues: wi.websiteQualityIssuesParsed,
           platform: business.platform,
           description: business.description ?? null,
-          phone: business.phone ?? null,
-          email: business.email ?? null,
+          phone: enrichedPhone,
+          email: enrichedEmail,
           location: business.location ?? null,
         });
 
@@ -224,8 +253,8 @@ export async function POST(req: NextRequest) {
           website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
-          phone: business.phone ?? null,
-          email: business.email ?? null,
+          phone: enrichedPhone,
+          email: enrichedEmail,
           location: business.location ?? null,
           lead_score: score,
           enrichment,
@@ -238,8 +267,8 @@ export async function POST(req: NextRequest) {
           website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
-          phone: business.phone ?? null,
-          email: business.email ?? null,
+          phone: enrichedPhone,
+          email: enrichedEmail,
           category: business.category ?? null,
         });
 
@@ -248,8 +277,8 @@ export async function POST(req: NextRequest) {
           website_quality: wi.websiteQuality,
           platform: business.platform,
           description: business.description ?? null,
-          phone: business.phone ?? null,
-          email: business.email ?? null,
+          phone: enrichedPhone,
+          email: enrichedEmail,
           enrichment,
         });
 
@@ -268,8 +297,8 @@ export async function POST(req: NextRequest) {
           {
             has_website: wi.hasWebsite,
             website_quality: wi.websiteQuality,
-            phone: business.phone ?? null,
-            email: business.email ?? null,
+            phone: enrichedPhone,
+            email: enrichedEmail,
           },
           enrichment
         );
@@ -284,8 +313,8 @@ export async function POST(req: NextRequest) {
                 name: business.name,
                 platform: business.platform,
                 profile_url: business.profile_url,
-                phone: business.phone ?? null,
-                email: business.email ?? null,
+                phone: enrichedPhone,
+                email: enrichedEmail,
                 location: business.location ?? location,
                 description: business.description ?? null,
                 category: business.category ?? null,
@@ -310,8 +339,8 @@ export async function POST(req: NextRequest) {
                   lead_score: score,
                   has_website: wi.hasWebsite,
                   website_quality: wi.websiteQuality,
-                  phone: business.phone ?? null,
-                  email: business.email ?? null,
+                  phone: enrichedPhone,
+                  email: enrichedEmail,
                   sequence_stage: "none",
                 }),
                 difficulty_level: difficultyLevel,
@@ -325,8 +354,8 @@ export async function POST(req: NextRequest) {
                       estimated_value: estimatedValue,
                       ai_premium_tier: null,
                       platform: business.platform,
-                      phone: business.phone ?? null,
-                      email: business.email ?? null,
+                      phone: enrichedPhone,
+                      email: enrichedEmail,
                       status: "not_contacted",
                     },
                     difficultyLevel
