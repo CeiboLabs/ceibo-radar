@@ -31,10 +31,14 @@ export function AppSidebar() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-    });
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        setUserEmail(data.user?.email ?? null);
+      });
+    } catch {
+      // env vars not available (build without NEXT_PUBLIC_ vars)
+    }
   }, []);
 
   if (path === "/login") return null;
