@@ -178,6 +178,13 @@ export default function PipelinePage() {
   const [messageLead, setMessageLead] = useState<Lead | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<LeadStatus | null>(null);
 
+  // ─── Filters ────────────────────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterPlatform, setFilterPlatform] = useState("all");
+  const [hotOnly, setHotOnly] = useState(false);
+
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
@@ -193,7 +200,40 @@ export default function PipelinePage() {
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
-  // Group leads by status (client-side)
+  // Derived filter options
+  const categories = Array.from(new Set(leads.map(l => l.category).filter(Boolean) as string[])).sort();
+
+  // Active filter count (for badge)
+  const activeFilters = [
+    search.trim() !== "",
+    filterCategory !== "all",
+    filterPriority !== "all",
+    filterPlatform !== "all",
+    hotOnly,
+  ].filter(Boolean).length;
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterCategory("all");
+    setFilterPriority("all");
+    setFilterPlatform("all");
+    setHotOnly(false);
+  };
+
+  // Apply filters
+  const filteredLeads = leads.filter(l => {
+    if (hotOnly && !l.is_hot) return false;
+    if (filterCategory !== "all" && l.category !== filterCategory) return false;
+    if (filterPriority !== "all" && l.lead_priority !== filterPriority) return false;
+    if (filterPlatform !== "all" && l.platform !== filterPlatform) return false;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      if (!l.name.toLowerCase().includes(q) && !(l.category ?? "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Group filtered leads by status
   const leadsByStatus: Record<LeadStatus, Lead[]> = {
     not_contacted: [],
     contacted:     [],
@@ -201,7 +241,7 @@ export default function PipelinePage() {
     proposal_sent: [],
     closed_won:    [],
   };
-  for (const lead of leads) {
+  for (const lead of filteredLeads) {
     const s = lead.status as LeadStatus;
     if (leadsByStatus[s]) leadsByStatus[s].push(lead);
   }
@@ -298,19 +338,106 @@ export default function PipelinePage() {
   return (
     <main className="max-w-full px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-white">Pipeline</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Gestioná el avance de tus leads por etapa</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-600">{leads.length} leads totales</span>
+      <div className="mb-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Pipeline</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {filteredLeads.length !== leads.length
+                ? `${filteredLeads.length} de ${leads.length} leads`
+                : `${leads.length} leads totales`}
+            </p>
+          </div>
           <button
             onClick={fetchLeads}
             className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700"
           >
-            Actualizar
+            ↻ Actualizar
           </button>
+        </div>
+
+        {/* Filters bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nombre..."
+              className="pl-8 pr-3 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 w-48"
+            />
+          </div>
+
+          {/* Category */}
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors focus:outline-none ${
+              filterCategory !== "all"
+                ? "bg-ceibo-950 border-ceibo-700 text-ceibo-300"
+                : "bg-gray-800 border-gray-700 text-gray-400"
+            }`}
+          >
+            <option value="all">Todas las categorías</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          {/* Priority */}
+          <select
+            value={filterPriority}
+            onChange={e => setFilterPriority(e.target.value)}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors focus:outline-none ${
+              filterPriority !== "all"
+                ? "bg-red-950 border-red-800 text-red-300"
+                : "bg-gray-800 border-gray-700 text-gray-400"
+            }`}
+          >
+            <option value="all">Cualquier prioridad</option>
+            <option value="high">🔥 Perfect Fit</option>
+            <option value="medium">👍 Good Fit</option>
+            <option value="low">❌ Low Fit</option>
+          </select>
+
+          {/* Platform */}
+          <select
+            value={filterPlatform}
+            onChange={e => setFilterPlatform(e.target.value)}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors focus:outline-none ${
+              filterPlatform !== "all"
+                ? "bg-blue-950 border-blue-800 text-blue-300"
+                : "bg-gray-800 border-gray-700 text-gray-400"
+            }`}
+          >
+            <option value="all">Todas las plataformas</option>
+            <option value="google_maps">Google Maps</option>
+            <option value="instagram">Instagram</option>
+          </select>
+
+          {/* HOT toggle */}
+          <button
+            onClick={() => setHotOnly(v => !v)}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              hotOnly
+                ? "bg-red-950 border-red-800 text-red-300"
+                : "bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            🔥 Solo HOT
+          </button>
+
+          {/* Clear filters */}
+          {activeFilters > 0 && (
+            <button
+              onClick={resetFilters}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-700 text-gray-500 hover:text-red-400 hover:border-red-800 transition-colors"
+            >
+              ✕ Limpiar ({activeFilters})
+            </button>
+          )}
         </div>
       </div>
 
