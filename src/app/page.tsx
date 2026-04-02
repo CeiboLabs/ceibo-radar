@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { SearchForm } from "@/components/SearchForm";
+import Link from "next/link";
 import { LeadsTable } from "@/components/LeadsTable";
 import { LeadFilters } from "@/components/LeadFilters";
-import type { Lead, LeadStatus, Platform, PriorityFilter, SearchConfig, WebsiteFilter } from "@/lib/types";
+import type { Lead, LeadStatus, Platform, PriorityFilter, WebsiteFilter } from "@/lib/types";
 import type { DifficultyLevel } from "@/lib/sales/difficultyEngine";
 import type { SegmentTag } from "@/lib/sales/segmentationEngine";
 import { ComparatorModal } from "@/components/ComparatorModal";
@@ -12,8 +12,6 @@ import { LeadModal } from "@/components/LeadModal";
 
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [progressMsg, setProgressMsg] = useState("");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -29,10 +27,6 @@ export default function Dashboard() {
   const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
   const [comparatorOpen, setComparatorOpen] = useState(false);
   const [comparatorLead, setComparatorLead] = useState<Lead | null>(null);
-  const [lastResult, setLastResult] = useState<{
-    total: number; no_website: number; bad_website: number;
-  } | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
     const params = new URLSearchParams();
@@ -88,47 +82,6 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [leads]);
 
-  const handleSearch = async (config: SearchConfig) => {
-    setSearching(true);
-    setProgressMsg("");
-    setError(null);
-    try {
-      const res = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-      if (!res.ok || !res.body) throw new Error("Search failed");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const msg = JSON.parse(line);
-            if (msg.type === "progress") setProgressMsg(msg.message);
-            else if (msg.type === "done") {
-              setLastResult({ total: msg.total, no_website: msg.no_website, bad_website: msg.bad_website });
-              await fetchLeads();
-            }
-          } catch {}
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setSearching(false);
-      setProgressMsg("");
-    }
-  };
-
   const handleUpdate = async (id: number, data: { status?: LeadStatus; notes?: string; tags?: string[]; sequence_stage?: string; next_followup_at?: string | null; is_favorite?: boolean }) => {
     await fetch(`/api/leads/${id}`, {
       method: "PATCH",
@@ -166,50 +119,19 @@ export default function Dashboard() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-      {/* Search */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-200 mb-3">Buscar Negocios</h2>
-        <SearchForm onSearch={handleSearch} loading={searching} progressMsg={progressMsg} />
-      </section>
-
-      {/* Search result summary */}
-      {lastResult && !searching && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-wrap items-center gap-6">
-          <div>
-            <div className="text-2xl font-bold text-ceibo-400">{lastResult.total}</div>
-            <div className="text-xs text-gray-500">negocios nuevos</div>
-          </div>
-          <div className="w-px h-8 bg-gray-800" />
-          <div>
-            <div className="text-2xl font-bold text-red-400">{lastResult.no_website}</div>
-            <div className="text-xs text-gray-500">sin website</div>
-          </div>
-          <div className="w-px h-8 bg-gray-800" />
-          <div>
-            <div className="text-2xl font-bold text-orange-400">{lastResult.bad_website}</div>
-            <div className="text-xs text-gray-500">website deficiente/mejorable</div>
-          </div>
-          <div className="w-px h-8 bg-gray-800" />
-          <div>
-            <div className="text-2xl font-bold text-gray-300">
-              {lastResult.no_website + lastResult.bad_website}
-            </div>
-            <div className="text-xs text-gray-500">oportunidades totales</div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-950 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
-          Error: {error}
-        </div>
-      )}
-
       {/* Leads */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-200">Base de Leads</h2>
-          <span className="text-xs text-gray-600">{leads.length} en total</span>
+          <h2 className="text-lg font-semibold text-gray-200">Leads</h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-600">{leads.length} en total</span>
+            <Link
+              href="/buscar"
+              className="text-xs px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-medium transition-colors"
+            >
+              Nueva búsqueda →
+            </Link>
+          </div>
         </div>
         <div className="space-y-4">
           <LeadFilters
