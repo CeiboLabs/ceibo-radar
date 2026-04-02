@@ -85,6 +85,7 @@ export async function scrapeFacebook(
     console.log(`[Facebook] Bing returned ${bingResults.length} results`);
 
     for (const r of bingResults) {
+      console.log(`[Facebook] Bing result: ${r.url}`);
       const url = r.url;
       if (!url.toLowerCase().includes("facebook.com")) continue;
       if (!isBusinessPage(url)) continue;

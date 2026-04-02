@@ -115,6 +115,7 @@ export async function scrapePaginasAmarillas(
     console.log(`[PáginasAmarillas] Bing returned ${results.length} results`);
 
     for (const r of results) {
+      console.log(`[PáginasAmarillas] Bing result: ${r.url}`);
       const listing = parsePAFromBing(r.title, r.url, r.snippet, seen);
       if (listing) {
         allListings.push(listing);
