@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppNav } from "@/components/AppNav";
+import { AppSidebar } from "@/components/AppSidebar";
 
 export const metadata: Metadata = {
   title: "Ceibo Radar",
@@ -19,8 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className="bg-black text-gray-100 min-h-screen antialiased">
-        <AppNav />
-        {children}
+        <AppSidebar />
+        <div className="ml-[220px] min-h-screen">
+          {children}
+        </div>
       </body>
     </html>
   );
