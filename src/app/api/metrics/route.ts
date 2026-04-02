@@ -35,15 +35,11 @@ export async function GET() {
   const byPriority = groupCount(leads.filter((l) => l.lead_priority), "lead_priority");
   const byPlatform = groupCount(leads, "platform");
 
-  const byLocation = Object.entries(groupCount(leads, "search_location") as Record<string, number>)
-    .map(([search_location, count]) => ({ search_location, count }))
+  const byLocation = (groupCount(leads, "search_location") as { search_location: string; count: number }[])
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const byCategory = Object.entries(
-    groupCount(leads.filter((l) => l.category), "category") as Record<string, number>
-  )
-    .map(([category, count]) => ({ category, count }))
+  const byCategory = (groupCount(leads.filter((l) => l.category), "category") as { category: string; count: number }[])
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
