@@ -206,6 +206,8 @@ async function ddgSearch(query: string, excluded: Set<string>): Promise<string[]
     }
 
     const html = await res.text();
+    // Log first 1500 chars of DDG response to diagnose format issues
+    console.log(`[Instagram] DDG response status: ${res.status}, body preview:\n${html.slice(0, 1500)}`);
 
     const usernames: string[] = [];
     const seen = new Set<string>();
