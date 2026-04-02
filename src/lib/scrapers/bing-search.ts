@@ -51,6 +51,7 @@ export async function bingSearch(
 
     const html = await res.text();
     console.log(`[Bing] HTML length: ${html.length} for: ${query}`);
+    console.log(`[Bing] HTML snippet: ${html.slice(0, 500).replace(/\s+/g, " ")}`);
 
     return parseBingResults(html);
   } catch (err) {
