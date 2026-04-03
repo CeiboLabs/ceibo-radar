@@ -12,7 +12,7 @@ const KEYWORD_SUGGESTIONS = [
   "pilates", "veterinaria", "contador", "psicólogo", "arquitecto",
 ];
 
-const MAX_LEADS_PRESETS = [5, 10, 20, 30, 50];
+const MAX_LEADS_PRESETS = [1, 2, 3, 5, 10, 20, 30, 50];
 
 const LOCATION_PRESETS: { label: string; terms: string[] }[] = [
   {
