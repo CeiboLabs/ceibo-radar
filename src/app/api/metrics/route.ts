@@ -41,7 +41,8 @@ export async function GET() {
   const thisMonth = leads.filter(l => new Date(l.created_at) >= monthAgo).length;
   const hotLeads = leads.filter(l => l.is_hot).length;
   const favorites = leads.filter(l => l.is_favorite).length;
-  const contacted = leads.filter(l => l.last_contacted_at).length;
+  // "contacted" = any stage beyond not_contacted
+  const contacted = leads.filter(l => l.status !== "not_contacted").length;
 
   const scored = leads.filter(l => l.lead_score != null);
   const avgScore = scored.length
@@ -70,7 +71,11 @@ export async function GET() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const byCategory = (groupCount(leads.filter(l => l.category), "category") as { category: string; count: number }[])
+  // Normalize category case before grouping
+  const leadsWithCategory = leads
+    .filter(l => l.category)
+    .map(l => ({ ...l, category: (l.category as string).trim().toLowerCase().replace(/^./, c => c.toUpperCase()) }));
+  const byCategory = (groupCount(leadsWithCategory, "category") as { category: string; count: number }[])
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
