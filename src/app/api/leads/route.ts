@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { scorelead } from "@/lib/lead-score";
+import { isHotLead } from "@/lib/sales/hotLeadDetector";
+import { computeDifficulty } from "@/lib/sales/difficultyEngine";
 import type { LeadStatus, Platform, WebsiteFilter, PriorityFilter } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -42,4 +45,72 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message, details: error }, { status: 500 });
   }
   return NextResponse.json(leads ?? []);
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json() as {
+    name: string;
+    phone?: string;
+    email?: string;
+    category?: string;
+    location?: string;
+    website_url?: string;
+    description?: string;
+    platform?: Platform;
+    notes?: string;
+  };
+
+  const { name, phone, email, category, location, website_url, description, notes } = body;
+  const platform: Platform = body.platform ?? "google_maps";
+
+  if (!name?.trim()) {
+    return NextResponse.json({ error: "El campo 'name' es requerido" }, { status: 400 });
+  }
+
+  const has_website = Boolean(website_url);
+
+  const scoreResult = scorelead({
+    has_website,
+    phone,
+    email,
+    location,
+    description,
+    platform,
+    category,
+  });
+
+  const partialLead = {
+    name,
+    phone: phone ?? null,
+    email: email ?? null,
+    category: category ?? null,
+    location: location ?? null,
+    website_url: website_url ?? null,
+    description: description ?? null,
+    platform,
+    notes: notes ?? null,
+    has_website,
+    lead_score: scoreResult.score,
+    lead_priority: scoreResult.priority,
+    lead_score_breakdown: JSON.stringify(scoreResult.breakdown),
+    keyword: category ?? "manual",
+    search_location: location ?? "Manual",
+    status: "not_contacted" as LeadStatus,
+  };
+
+  const is_hot = isHotLead({ ...partialLead, lead_score: scoreResult.score, lead_priority: scoreResult.priority });
+  const difficulty_level = computeDifficulty({ ...partialLead });
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({ ...partialLead, is_hot, difficulty_level })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[leads POST] Supabase error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }

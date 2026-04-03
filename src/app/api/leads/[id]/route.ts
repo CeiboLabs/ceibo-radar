@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/lead-events";
+import { scorelead } from "@/lib/lead-score";
+import { isHotLead } from "@/lib/sales/hotLeadDetector";
+import { computeDifficulty } from "@/lib/sales/difficultyEngine";
 import type { Lead } from "@/lib/types";
 
 export async function GET(
@@ -19,7 +22,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const { status, notes, tags, sequence_stage, next_followup_at, is_favorite } = body;
+  const { status, notes, tags, sequence_stage, next_followup_at, is_favorite, recalculate } = body;
 
   // Fetch current state for event diffing
   const { data: before, error: fetchErr } = await supabase
@@ -42,6 +45,28 @@ export async function PATCH(
   if (sequence_stage !== undefined) update.sequence_stage = sequence_stage;
   if (next_followup_at !== undefined) update.next_followup_at = next_followup_at ?? null;
   if (is_favorite !== undefined)    update.is_favorite = Boolean(is_favorite);
+
+  if (recalculate === true) {
+    const scoreResult = scorelead({
+      has_website: Boolean(before.has_website),
+      website_quality: before.website_quality ?? null,
+      phone: before.phone ?? null,
+      email: before.email ?? null,
+      location: before.location ?? null,
+      description: before.description ?? null,
+      platform: before.platform,
+      category: before.category ?? null,
+    });
+    update.lead_score = scoreResult.score;
+    update.lead_priority = scoreResult.priority;
+    update.lead_score_breakdown = JSON.stringify(scoreResult.breakdown);
+    update.is_hot = isHotLead({
+      ...before,
+      lead_score: scoreResult.score,
+      lead_priority: scoreResult.priority,
+    });
+    update.difficulty_level = computeDifficulty(before);
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -76,6 +101,9 @@ export async function PATCH(
   if (is_favorite !== undefined && Boolean(is_favorite) !== Boolean(prev.is_favorite)) {
     logEvent(leadId, is_favorite ? "favorited" : "unfavorited",
       is_favorite ? "Marcado como favorito ⭐" : "Removido de favoritos");
+  }
+  if (recalculate === true) {
+    logEvent(leadId, "score_recalculated", "Score recalculado");
   }
   // ─────────────────────────────────────────────────────────────────────────────
 

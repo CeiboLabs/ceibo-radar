@@ -7,7 +7,8 @@ export type EventType =
   | "tag_removed"
   | "ai_analyzed"
   | "favorited"
-  | "unfavorited";
+  | "unfavorited"
+  | "score_recalculated";
 
 /** Fire-and-forget event logger — never throws */
 export function logEvent(
