@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { AppSidebar } from "@/components/AppSidebar";
 
 export const metadata: Metadata = {

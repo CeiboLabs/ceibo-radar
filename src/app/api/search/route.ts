@@ -18,6 +18,29 @@ import { computeSegments } from "@/lib/sales/segmentationEngine";
 import { parseLocation } from "@/lib/location";
 import type { Platform, ScrapedBusiness, SearchConfig, WebsiteQuality } from "@/lib/types";
 
+// ─── Fuzzy name deduplication ─────────────────────────────────────────────────
+
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(s\.?a\.?|s\.?r\.?l\.?|ltda|srl|sa)\b/gi, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+function isSimilarName(a: string, b: string, threshold = 0.82): boolean {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (na === nb) return true;
+  const wordsA = new Set(na.split(" ").filter(w => w.length > 2));
+  const wordsB = new Set(nb.split(" ").filter(w => w.length > 2));
+  if (wordsA.size === 0 || wordsB.size === 0) return false;
+  const intersection = [...wordsA].filter(w => wordsB.has(w)).length;
+  const union = new Set([...wordsA, ...wordsB]).size;
+  return intersection / union >= threshold;
+}
+
 // ─── Website analysis result ──────────────────────────────────────────────────
 
 interface WebsiteInfo {
@@ -98,9 +121,16 @@ export async function POST(req: NextRequest) {
   };
 
   (async () => {
-    // Load all existing profile_urls once for deduplication
-    const { data: existingRows } = await supabase.from("leads").select("profile_url");
+    // Load existing leads for deduplication (URL + fuzzy name)
+    const { data: existingRows } = await supabase.from("leads").select("profile_url, name, search_location");
     const existingUrls = new Set<string>((existingRows ?? []).map((r) => r.profile_url));
+    // Map: normalized_location → array of normalized names
+    const existingNamesByLocation = new Map<string, string[]>();
+    for (const r of (existingRows ?? [])) {
+      const locKey = normalizeName(r.search_location ?? "");
+      if (!existingNamesByLocation.has(locKey)) existingNamesByLocation.set(locKey, []);
+      existingNamesByLocation.get(locKey)!.push(normalizeName(r.name ?? ""));
+    }
 
     const allSaved: Array<{ has_website: boolean; website_quality: string | null }> = [];
 
@@ -132,8 +162,14 @@ export async function POST(req: NextRequest) {
 
       if (scraped.length === 0) continue;
 
-      // ── Deduplication: skip businesses already in the DB or seen this run ──
-      const newBusinesses = scraped.filter((b) => !existingUrls.has(b.profile_url));
+      // ── Deduplication: skip by URL or fuzzy name match ────────────────────
+      const locKey = normalizeName(location);
+      const locationNames = existingNamesByLocation.get(locKey) ?? [];
+      const newBusinesses = scraped.filter((b) => {
+        if (existingUrls.has(b.profile_url)) return false;
+        const normB = normalizeName(b.name);
+        return !locationNames.some(existingNorm => isSimilarName(normB, existingNorm));
+      });
       const skipped = scraped.length - newBusinesses.length;
 
       if (skipped > 0) {
@@ -146,7 +182,11 @@ export async function POST(req: NextRequest) {
       if (newBusinesses.length === 0) continue;
 
       // Mark as seen immediately so parallel locations don't reprocess
-      newBusinesses.forEach((b) => existingUrls.add(b.profile_url));
+      newBusinesses.forEach((b) => {
+        existingUrls.add(b.profile_url);
+        locationNames.push(normalizeName(b.name));
+      });
+      if (!existingNamesByLocation.has(locKey)) existingNamesByLocation.set(locKey, locationNames);
 
       // ── Parallel website analysis (batches of 5) ───────────────────────────
       await send({

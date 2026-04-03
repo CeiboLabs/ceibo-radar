@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { LeadsTable } from "@/components/LeadsTable";
 import { LeadFilters } from "@/components/LeadFilters";
@@ -9,6 +10,8 @@ import type { DifficultyLevel } from "@/lib/sales/difficultyEngine";
 import type { SegmentTag } from "@/lib/sales/segmentationEngine";
 import { ComparatorModal } from "@/components/ComparatorModal";
 import { LeadModal } from "@/components/LeadModal";
+
+const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false });
 
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -27,6 +30,8 @@ export default function Dashboard() {
   const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
   const [comparatorOpen, setComparatorOpen] = useState(false);
   const [comparatorLead, setComparatorLead] = useState<Lead | null>(null);
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  const [mapLead, setMapLead] = useState<Lead | null>(null);
 
   const fetchLeads = useCallback(async () => {
     const params = new URLSearchParams();
@@ -148,7 +153,24 @@ export default function Dashboard() {
       {/* Leads */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-200">Leads</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-gray-200">Leads</h2>
+            {/* View mode tabs */}
+            <div className="flex bg-gray-800 rounded-lg p-0.5 border border-gray-700">
+              <button
+                onClick={() => setViewMode("table")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "table" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+              >
+                ☰ Tabla
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "map" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+              >
+                🗺 Mapa
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
             <button
@@ -199,19 +221,26 @@ export default function Dashboard() {
             onExport={handleExport}
             totalCount={displayedLeads.length}
           />
-          <LeadsTable
-            leads={displayedLeads}
-            compareIds={compareIds}
-            onDelete={handleDelete}
-            onToggleCompare={(id) => {
-              setCompareIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(id)) next.delete(id); else next.add(id);
-                return next;
-              });
-            }}
-            onUpdate={handleUpdate}
-          />
+          {viewMode === "map" ? (
+            <LeadMap
+              leads={displayedLeads}
+              onLeadClick={(lead) => setMapLead(lead)}
+            />
+          ) : (
+            <LeadsTable
+              leads={displayedLeads}
+              compareIds={compareIds}
+              onDelete={handleDelete}
+              onToggleCompare={(id) => {
+                setCompareIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id); else next.add(id);
+                  return next;
+                });
+              }}
+              onUpdate={handleUpdate}
+            />
+          )}
 
           {/* Comparator floating bar */}
           {compareIds.size >= 2 && (
@@ -253,6 +282,15 @@ export default function Dashboard() {
           onClose={() => setComparatorLead(null)}
           onUpdate={handleUpdate}
           onDelete={(id) => { handleDelete(id); setComparatorLead(null); }}
+        />
+      )}
+
+      {mapLead && (
+        <LeadModal
+          lead={mapLead}
+          onClose={() => setMapLead(null)}
+          onUpdate={handleUpdate}
+          onDelete={(id) => { handleDelete(id); setMapLead(null); }}
         />
       )}
     </main>
