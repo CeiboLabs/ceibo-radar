@@ -1,22 +1,21 @@
 import OpenAI from "openai";
 
-let client: OpenAI | null = null;
+let openaiClient: OpenAI | null = null;
 
 export function isAiAvailable(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
 }
 
-function getClient(): OpenAI {
-  if (!client) {
-    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
-  return client;
+  return openaiClient;
 }
 
 /**
- * Calls OpenAI gpt-4o-mini with the given prompts.
- * Forces JSON output via response_format.
- * Throws if AI is unavailable or call fails.
+ * Calls AI with the given prompts, returning raw JSON string.
+ * Prefers Anthropic if ANTHROPIC_API_KEY is set, falls back to OpenAI.
  */
 export async function callAI(
   systemPrompt: string,
@@ -24,11 +23,25 @@ export async function callAI(
   maxTokens = 400
 ): Promise<string> {
   if (!isAiAvailable()) {
-    throw new Error("OPENAI_API_KEY not configured");
+    throw new Error("No AI service configured (set ANTHROPIC_API_KEY or OPENAI_API_KEY)");
   }
 
-  const openai = getClient();
+  // Anthropic path
+  if (process.env.ANTHROPIC_API_KEY) {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: maxTokens,
+      system: systemPrompt + "\n\nSiempre responde con JSON válido, sin markdown, sin texto extra.",
+      messages: [{ role: "user", content: userPrompt }],
+    });
+    const raw = msg.content[0].type === "text" ? msg.content[0].text : "{}";
+    return raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  }
 
+  // OpenAI fallback
+  const openai = getOpenAI();
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     max_tokens: maxTokens,
@@ -38,6 +51,5 @@ export async function callAI(
       { role: "user", content: userPrompt },
     ],
   });
-
   return response.choices[0]?.message?.content ?? "{}";
 }
