@@ -67,8 +67,6 @@ const DEPTH_CONFIG: Record<SearchDepth, { label: string; hint: string; maxScroll
 const PLATFORM_LABELS: Record<Platform, string> = {
   google_maps: "Google Maps",
   instagram: "Instagram",
-  paginas_amarillas: "Páginas Amarillas",
-  facebook: "Facebook",
 };
 
 interface SearchFormProps {
@@ -82,7 +80,7 @@ export function SearchForm({ onSearch, loading, progressMsg }: SearchFormProps) 
   const [selected, setSelected] = useState<Set<string>>(
     new Set(["Montevideo, Uruguay"])
   );
-  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram", "paginas_amarillas", "facebook"]);
+  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram"]);
   const [depth, setDepth] = useState<SearchDepth>("standard");
 
   const toggleDept = (term: string) => {
@@ -220,7 +218,7 @@ export function SearchForm({ onSearch, loading, progressMsg }: SearchFormProps) 
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-2">Plataformas</label>
           <div className="flex flex-wrap gap-2">
-            {(["google_maps", "instagram", "paginas_amarillas", "facebook"] as Platform[]).map(p => (
+            {(["google_maps", "instagram"] as Platform[]).map(p => (
               <button
                 key={p}
                 type="button"

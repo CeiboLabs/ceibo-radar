@@ -31,8 +31,6 @@ interface LeadsTableProps {
 const PLATFORM_LABEL: Record<string, string> = {
   google_maps: "Google Maps",
   instagram: "Instagram",
-  paginas_amarillas: "Páginas Amarillas",
-  facebook: "Facebook",
 };
 
 // ─── Ceibo Fit config ─────────────────────────────────────────────────────────

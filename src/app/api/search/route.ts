@@ -2,8 +2,6 @@ import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { scrapeGoogleMaps } from "@/lib/scrapers/google-maps";
 import { scrapeInstagram } from "@/lib/scrapers/instagram";
-import { scrapePaginasAmarillas } from "@/lib/scrapers/paginas-amarillas";
-import { scrapeFacebook } from "@/lib/scrapers/facebook";
 import { extractContactsFromHtml, extractContactsFromText } from "@/lib/scrapers/contact-extractor";
 import { checkWebsite } from "@/lib/scrapers/website-checker";
 import { analyzeWebsite } from "@/lib/scrapers/website-quality";
@@ -131,28 +129,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (platforms.includes("paginas_amarillas")) {
-        await send({ type: "progress", message: `Buscando "${keyword}" en Páginas Amarillas (${location})...` });
-        try {
-          const results = await scrapePaginasAmarillas(keyword, location, 3);
-          scraped.push(...results);
-          await send({ type: "progress", message: `Páginas Amarillas (${location}): ${results.length} negocios` });
-        } catch {
-          await send({ type: "progress", message: `Páginas Amarillas (${location}): error al buscar` });
-        }
-      }
-
-      if (platforms.includes("facebook")) {
-        await send({ type: "progress", message: `Buscando "${keyword}" en Facebook (${location})...` });
-        try {
-          const facebookQueryCount = maxScrolls <= 5 ? 1 : 2;
-          const results = await scrapeFacebook(keyword, location, facebookQueryCount);
-          scraped.push(...results);
-          await send({ type: "progress", message: `Facebook (${location}): ${results.length} páginas` });
-        } catch {
-          await send({ type: "progress", message: `Facebook (${location}): error al buscar` });
-        }
-      }
 
       if (scraped.length === 0) continue;
 

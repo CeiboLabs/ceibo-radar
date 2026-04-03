@@ -50,8 +50,6 @@ const REGION_LABELS: Record<string, string> = {
 const PLATFORM_LABELS: Record<Platform, string> = {
   google_maps: "Google Maps",
   instagram: "Instagram",
-  paginas_amarillas: "Páginas Amarillas",
-  facebook: "Facebook",
 };
 
 const BY_REGION = (["metro", "costa", "litoral", "norte", "interior"] as const).map(r => ({
@@ -99,7 +97,7 @@ export default function BuscarPage() {
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(
     new Set(["Montevideo, Uruguay"])
   );
-  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram", "paginas_amarillas", "facebook"]);
+  const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram"]);
   const [depth, setDepth] = useState<DepthKey>("standard");
   const [showAllDepts, setShowAllDepts] = useState(false);
 
@@ -355,7 +353,7 @@ export default function BuscarPage() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Plataformas</label>
               <div className="flex flex-wrap gap-2">
-                {(["google_maps", "instagram", "paginas_amarillas", "facebook"] as Platform[]).map(p => (
+                {(["google_maps", "instagram"] as Platform[]).map(p => (
                   <button
                     key={p}
                     type="button"
@@ -492,7 +490,7 @@ export default function BuscarPage() {
                             : `${item.locations.length} lugares`}
                           {" · "}
                           {item.platforms.map(p => {
-                            const abbrev: Record<string, string> = { google_maps: "Maps", instagram: "IG", paginas_amarillas: "PA", facebook: "FB" };
+                            const abbrev: Record<string, string> = { google_maps: "Maps", instagram: "IG" };
                             return abbrev[p] ?? p;
                           }).join(" + ")}
                         </div>
