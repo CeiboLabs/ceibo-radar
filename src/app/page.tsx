@@ -134,6 +134,41 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [leads]);
 
+  const distinctPlatforms = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.platform).filter(Boolean) as string[])).sort() as Platform[],
+    [leads]
+  );
+  const distinctStatuses = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.status).filter(Boolean) as string[])) as LeadStatus[],
+    [leads]
+  );
+  const distinctPriorities = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.lead_priority).filter(Boolean) as string[])),
+    [leads]
+  );
+  const distinctWebsiteQualities = useMemo(() => {
+    const vals = new Set<string>();
+    leads.forEach((l) => {
+      if (!l.has_website) vals.add("no_website");
+      else if (l.website_quality) vals.add(l.website_quality);
+    });
+    return Array.from(vals);
+  }, [leads]);
+  const distinctDifficulties = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.difficulty_level).filter(Boolean) as string[])) as DifficultyLevel[],
+    [leads]
+  );
+  const distinctSegments = useMemo(() => {
+    const segSet = new Set<string>();
+    leads.forEach((l) => {
+      try {
+        const s: string[] = JSON.parse(l.segment_tags ?? "[]");
+        s.forEach((seg) => segSet.add(seg));
+      } catch {}
+    });
+    return Array.from(segSet) as SegmentTag[];
+  }, [leads]);
+
   const handleUpdate = async (id: number, data: { status?: LeadStatus; notes?: string; tags?: string[]; sequence_stage?: string; next_followup_at?: string | null; is_favorite?: boolean }) => {
     const res = await fetch(`/api/leads/${id}`, {
       method: "PATCH",
@@ -285,6 +320,12 @@ export default function Dashboard() {
             regions={distinctRegions}
             categories={distinctCategories}
             tags={distinctTags}
+            availablePlatforms={distinctPlatforms}
+            availableStatuses={distinctStatuses}
+            availablePriorities={distinctPriorities}
+            availableWebsiteQualities={distinctWebsiteQualities}
+            availableDifficulties={distinctDifficulties}
+            availableSegments={distinctSegments}
             onWebsiteFilterChange={setWebsiteFilter}
             onPriorityChange={setPriority}
             onPlatformChange={setPlatform}

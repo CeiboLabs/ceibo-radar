@@ -21,6 +21,12 @@ interface LeadFiltersProps {
   categories: string[];
   tags: string[];
   regions: string[];
+  availablePlatforms: Platform[];
+  availableStatuses: (LeadStatus | string)[];
+  availablePriorities: string[];
+  availableWebsiteQualities: string[];
+  availableDifficulties: (DifficultyLevel | string)[];
+  availableSegments: (SegmentTag | string)[];
   onWebsiteFilterChange: (v: WebsiteFilter) => void;
   onPriorityChange: (v: PriorityFilter) => void;
   onPlatformChange: (v: Platform | "all") => void;
@@ -57,6 +63,12 @@ export function LeadFilters({
   categories,
   tags,
   regions,
+  availablePlatforms,
+  availableStatuses,
+  availablePriorities,
+  availableWebsiteQualities,
+  availableDifficulties,
+  availableSegments,
   onWebsiteFilterChange,
   onPriorityChange,
   onPlatformChange,
@@ -132,32 +144,38 @@ export function LeadFilters({
         </div>
 
         {/* Priority */}
-        <select value={priority} onChange={(e) => onPriorityChange(e.target.value as PriorityFilter)} className={selectClass}>
-          <option value="all">Todas las prioridades</option>
-          <option value="high">🔴 Alta prioridad</option>
-          <option value="medium">🟡 Media prioridad</option>
-          <option value="low">⚪ Baja prioridad</option>
-        </select>
+        {availablePriorities.length > 0 && (
+          <select value={priority} onChange={(e) => onPriorityChange(e.target.value as PriorityFilter)} className={selectClass}>
+            <option value="all">Todas las prioridades</option>
+            {availablePriorities.includes("high")   && <option value="high">🔴 Alta prioridad</option>}
+            {availablePriorities.includes("medium")  && <option value="medium">🟡 Media prioridad</option>}
+            {availablePriorities.includes("low")     && <option value="low">⚪ Baja prioridad</option>}
+          </select>
+        )}
 
         {/* Website quality */}
-        <select value={websiteFilter} onChange={(e) => onWebsiteFilterChange(e.target.value as WebsiteFilter)} className={selectClass}>
-          <option value="all">Todos los websites</option>
-          <option value="no_website">Sin website</option>
-          <option value="poor">Website deficiente</option>
-          <option value="needs_improvement">Website mejorable</option>
-          <option value="good">Website bueno</option>
-        </select>
+        {availableWebsiteQualities.length > 0 && (
+          <select value={websiteFilter} onChange={(e) => onWebsiteFilterChange(e.target.value as WebsiteFilter)} className={selectClass}>
+            <option value="all">Todos los websites</option>
+            {availableWebsiteQualities.includes("no_website")        && <option value="no_website">Sin website</option>}
+            {availableWebsiteQualities.includes("poor")              && <option value="poor">Website deficiente</option>}
+            {availableWebsiteQualities.includes("needs_improvement") && <option value="needs_improvement">Website mejorable</option>}
+            {availableWebsiteQualities.includes("good")              && <option value="good">Website bueno</option>}
+          </select>
+        )}
 
         {/* Status */}
-        <select value={status} onChange={(e) => onStatusChange(e.target.value as LeadStatus | "all")} className={selectClass}>
-          <option value="all">Todos los estados</option>
-          <option value="not_contacted">Sin contactar</option>
-          <option value="contacted">Contactado</option>
-          <option value="interested">Interesado</option>
-          <option value="proposal_sent">Propuesta enviada</option>
-          <option value="closed_won">Cerrado ✓</option>
-          <option value="closed_lost">Perdido</option>
-        </select>
+        {availableStatuses.length > 0 && (
+          <select value={status} onChange={(e) => onStatusChange(e.target.value as LeadStatus | "all")} className={selectClass}>
+            <option value="all">Todos los estados</option>
+            {availableStatuses.includes("not_contacted")  && <option value="not_contacted">Sin contactar</option>}
+            {availableStatuses.includes("contacted")      && <option value="contacted">Contactado</option>}
+            {availableStatuses.includes("interested")     && <option value="interested">Interesado</option>}
+            {availableStatuses.includes("proposal_sent")  && <option value="proposal_sent">Propuesta enviada</option>}
+            {availableStatuses.includes("closed_won")     && <option value="closed_won">Cerrado ✓</option>}
+            {availableStatuses.includes("closed_lost")    && <option value="closed_lost">Perdido</option>}
+          </select>
+        )}
 
         {/* Hot leads toggle */}
         <button
@@ -213,11 +231,13 @@ export function LeadFilters({
       {expanded && (
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-800">
           {/* Platform */}
-          <select value={platform} onChange={(e) => onPlatformChange(e.target.value as Platform | "all")} className={selectClass}>
-            <option value="all">Todas las plataformas</option>
-            <option value="google_maps">Google Maps</option>
-            <option value="instagram">Instagram</option>
-          </select>
+          {availablePlatforms.length > 0 && (
+            <select value={platform} onChange={(e) => onPlatformChange(e.target.value as Platform | "all")} className={selectClass}>
+              <option value="all">Todas las plataformas</option>
+              {availablePlatforms.includes("google_maps") && <option value="google_maps">Google Maps</option>}
+              {availablePlatforms.includes("instagram")   && <option value="instagram">Instagram</option>}
+            </select>
+          )}
 
           {/* Department / Region filter */}
           {regions.length > 0 && (
@@ -250,20 +270,24 @@ export function LeadFilters({
           )}
 
           {/* Difficulty filter */}
-          <select value={difficulty} onChange={(e) => onDifficultyChange(e.target.value as DifficultyLevel | "all")} className={selectClass}>
-            <option value="all">Toda dificultad</option>
-            <option value="easy">🟢 Fácil</option>
-            <option value="medium">🟡 Medio</option>
-            <option value="hard">🔴 Difícil</option>
-          </select>
+          {availableDifficulties.length > 0 && (
+            <select value={difficulty} onChange={(e) => onDifficultyChange(e.target.value as DifficultyLevel | "all")} className={selectClass}>
+              <option value="all">Toda dificultad</option>
+              {availableDifficulties.includes("easy")   && <option value="easy">🟢 Fácil</option>}
+              {availableDifficulties.includes("medium")  && <option value="medium">🟡 Medio</option>}
+              {availableDifficulties.includes("hard")    && <option value="hard">🔴 Difícil</option>}
+            </select>
+          )}
 
           {/* Segment filter */}
-          <select value={segment} onChange={(e) => onSegmentChange(e.target.value as SegmentTag | "all")} className={selectClass}>
-            <option value="all">Todos los segmentos</option>
-            {(Object.keys(SEGMENT_LABELS) as SegmentTag[]).map((s) => (
-              <option key={s} value={s}>{SEGMENT_LABELS[s]}</option>
-            ))}
-          </select>
+          {availableSegments.length > 0 && (
+            <select value={segment} onChange={(e) => onSegmentChange(e.target.value as SegmentTag | "all")} className={selectClass}>
+              <option value="all">Todos los segmentos</option>
+              {(Object.keys(SEGMENT_LABELS) as SegmentTag[]).filter(s => availableSegments.includes(s)).map((s) => (
+                <option key={s} value={s}>{SEGMENT_LABELS[s]}</option>
+              ))}
+            </select>
+          )}
         </div>
       )}
     </div>
