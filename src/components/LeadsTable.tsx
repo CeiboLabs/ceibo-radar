@@ -27,44 +27,50 @@ interface LeadsTableProps {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const PRIORITY_SCORE_COLOR: Record<LeadPriority, string> = {
-  high:   "text-red-400",
-  medium: "text-yellow-400",
-  low:    "text-gray-500",
-};
-const PRIORITY_BAR: Record<LeadPriority, string> = {
-  high:   "bg-red-500",
-  medium: "bg-yellow-500",
-  low:    "bg-gray-600",
-};
-const PRIORITY_ROW_BORDER: Record<LeadPriority, string> = {
-  high:   "border-l-2 border-red-800",
-  medium: "border-l-2 border-yellow-800",
-  low:    "",
-};
-const PRIORITY_ICON: Record<LeadPriority, string> = {
-  high: "🔥", medium: "👍", low: "·",
+const PRIORITY_COLOR: Record<LeadPriority, { score: string; bar: string; border: string }> = {
+  high:   { score: "text-red-400",    bar: "bg-red-500",    border: "border-l-2 border-red-800"    },
+  medium: { score: "text-yellow-400", bar: "bg-yellow-500", border: "border-l-2 border-yellow-800" },
+  low:    { score: "text-gray-500",   bar: "bg-gray-700",   border: ""                              },
 };
 
-const STATUS_BADGE: Record<LeadStatus, { label: string; cls: string }> = {
-  not_contacted: { label: "Sin contactar",   cls: "bg-gray-800 text-gray-400 border-gray-700"       },
-  contacted:     { label: "Contactado",      cls: "bg-blue-950 text-blue-400 border-blue-800"       },
-  interested:    { label: "Interesado",      cls: "bg-ceibo-950 text-ceibo-400 border-ceibo-800"    },
-  proposal_sent: { label: "Propuesta",       cls: "bg-purple-950 text-purple-400 border-purple-800" },
-  closed_won:    { label: "Cerrado ✓",       cls: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-  closed_lost:   { label: "Perdido",         cls: "bg-red-950 text-red-400 border-red-900"          },
+const STATUS_CFG: Record<LeadStatus, { label: string; cls: string }> = {
+  not_contacted: { label: "Sin contactar", cls: "bg-gray-800/80 text-gray-400 border-gray-700"         },
+  contacted:     { label: "Contactado",    cls: "bg-blue-950 text-blue-400 border-blue-800"           },
+  interested:    { label: "Interesado",    cls: "bg-ceibo-950 text-ceibo-400 border-ceibo-800"        },
+  proposal_sent: { label: "Propuesta",     cls: "bg-purple-950 text-purple-400 border-purple-800"     },
+  closed_won:    { label: "Ganado ✓",      cls: "bg-emerald-950 text-emerald-400 border-emerald-800"  },
+  closed_lost:   { label: "Perdido",       cls: "bg-red-950/70 text-red-400 border-red-900"           },
 };
 
-const WEBSITE_BADGE: Record<string, { label: string; cls: string }> = {
-  no_website:        { label: "Sin web",   cls: "bg-red-950 text-red-400 border-red-900"       },
-  poor:              { label: "Web mala",  cls: "bg-orange-950 text-orange-400 border-orange-900" },
-  needs_improvement: { label: "Web débil", cls: "bg-yellow-950 text-yellow-500 border-yellow-900" },
-  good:              { label: "Web buena", cls: "bg-ceibo-950 text-ceibo-400 border-ceibo-900"  },
+const WEBSITE_CFG: Record<string, { label: string; cls: string }> = {
+  no_website:        { label: "Sin web",   cls: "text-red-400 bg-red-950/60 border-red-900"         },
+  poor:              { label: "Web mala",  cls: "text-orange-400 bg-orange-950/60 border-orange-900" },
+  needs_improvement: { label: "Web débil", cls: "text-yellow-500 bg-yellow-950/40 border-yellow-900" },
+  good:              { label: "Web ✓",     cls: "text-ceibo-400 bg-ceibo-950/50 border-ceibo-900"   },
 };
 
-// ─── Sort types ───────────────────────────────────────────────────────────────
 type SortKey = "lead_score" | "name" | "created_at";
 type SortDir = "asc" | "desc";
+
+// ─── Icon button helper ───────────────────────────────────────────────────────
+function IconBtn({
+  onClick, title, children, className = "",
+}: {
+  onClick?: (e: React.MouseEvent) => void;
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`w-8 h-8 flex items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition-colors text-sm ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDelete }: LeadsTableProps) {
@@ -79,12 +85,8 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
   }
 
   const sorted = [...leads].sort((a, b) => {
-    let av: number | string | null = sortKey === "lead_score" ? (a.lead_score ?? -1)
-      : sortKey === "name" ? a.name.toLowerCase()
-      : a.created_at;
-    let bv: number | string | null = sortKey === "lead_score" ? (b.lead_score ?? -1)
-      : sortKey === "name" ? b.name.toLowerCase()
-      : b.created_at;
+    const av = sortKey === "lead_score" ? (a.lead_score ?? -1) : sortKey === "name" ? a.name.toLowerCase() : a.created_at;
+    const bv = sortKey === "lead_score" ? (b.lead_score ?? -1) : sortKey === "name" ? b.name.toLowerCase() : b.created_at;
     if (av === null) return 1;
     if (bv === null) return -1;
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
@@ -99,83 +101,80 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
     );
   }
 
-  const SortBtn = ({ col, label }: { col: SortKey; label: string }) => (
-    <button
-      onClick={() => toggleSort(col)}
-      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors ${
-        sortKey === col ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"
-      }`}
-    >
-      {label}
-      <span>{sortKey === col ? (sortDir === "desc" ? "↓" : "↑") : "↕"}</span>
-    </button>
-  );
-
   return (
     <>
-      <div className="rounded-xl overflow-hidden border border-gray-800">
-        {/* Header */}
-        <div className="bg-gray-900/80 border-b border-gray-800 px-4 py-2.5 flex items-center gap-4">
-          {onToggleCompare && <div className="w-4" />}
-          <SortBtn col="lead_score" label="Score" />
-          <SortBtn col="name" label="Negocio" />
+      <div className="rounded-xl border border-gray-800 overflow-hidden">
+
+        {/* Sort header */}
+        <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-3">
+          {onToggleCompare && <div className="w-4 shrink-0" />}
+          <div className="w-14 shrink-0">
+            <button onClick={() => toggleSort("lead_score")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "lead_score" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
+              Score {sortKey === "lead_score" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
+            </button>
+          </div>
+          <div className="flex-1">
+            <button onClick={() => toggleSort("name")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "name" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
+              Negocio {sortKey === "name" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
+            </button>
+          </div>
           <div className="ml-auto">
-            <SortBtn col="created_at" label="Fecha" />
+            <button onClick={() => toggleSort("created_at")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "created_at" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
+              Fecha {sortKey === "created_at" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
+            </button>
           </div>
         </div>
 
-        {/* Rows */}
-        <div className="divide-y divide-gray-800/70">
+        {/* Lead rows */}
+        <div className="divide-y divide-gray-800/60">
           {sorted.map((lead) => {
-            const priority  = lead.lead_priority as LeadPriority | null;
-            const scoreColor = priority ? PRIORITY_SCORE_COLOR[priority] : "text-gray-500";
-            const barColor   = priority ? PRIORITY_BAR[priority] : "bg-gray-700";
-            const rowBorder  = priority ? PRIORITY_ROW_BORDER[priority] : "";
-            const status     = STATUS_BADGE[lead.status];
-            const na         = getNextAction(lead);
-            const phoneInfo  = classifyPhone(lead.phone);
+            const priority = lead.lead_priority as LeadPriority | null;
+            const pcfg     = priority ? PRIORITY_COLOR[priority] : null;
+            const status   = STATUS_CFG[lead.status];
+            const na       = getNextAction(lead);
+            const phoneInfo = classifyPhone(lead.phone);
             const tags: string[] = (() => { try { return JSON.parse(lead.tags ?? "[]"); } catch { return []; } })();
 
-            // Website badge key
             const webKey = !lead.has_website ? "no_website"
               : (lead.website_quality as WebsiteQuality | null) ?? null;
-            const webBadge = webKey && WEBSITE_BADGE[webKey] ? WEBSITE_BADGE[webKey] : null;
+            const webBadge = webKey && WEBSITE_CFG[webKey] ? WEBSITE_CFG[webKey] : null;
 
             return (
               <div
                 key={lead.id}
-                className={`group relative bg-gray-900 hover:bg-gray-800/60 transition-colors flex items-center gap-3 px-4 py-3 ${rowBorder}`}
+                onClick={() => setSelectedLead(lead)}
+                className={`group relative flex items-center gap-3 px-4 py-3.5 bg-gray-900 hover:bg-gray-800/50 transition-colors cursor-pointer ${pcfg?.border ?? ""}`}
               >
                 {/* Checkbox */}
                 {onToggleCompare && (
                   <input
                     type="checkbox"
                     checked={compareIds?.has(lead.id) ?? false}
-                    onChange={() => onToggleCompare(lead.id)}
+                    onChange={(e) => { e.stopPropagation(); onToggleCompare(lead.id); }}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-3.5 h-3.5 rounded accent-ceibo-500 cursor-pointer shrink-0"
                   />
                 )}
 
-                {/* Score */}
-                <div className="shrink-0 w-12 flex flex-col items-center gap-1">
-                  <span className={`text-sm font-bold font-mono leading-none ${scoreColor}`}>
+                {/* Score pill */}
+                <div className="shrink-0 w-14 flex flex-col items-center gap-1">
+                  <span className={`text-sm font-bold font-mono leading-none ${pcfg?.score ?? "text-gray-600"}`}>
                     {lead.lead_score ?? "—"}
                   </span>
-                  <div className="w-8 h-1 bg-gray-800 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${barColor}`}
+                  <div className="w-10 h-1 bg-gray-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${pcfg?.bar ?? "bg-gray-700"}`}
                       style={{ width: lead.lead_score ? `${lead.lead_score}%` : "0%" }} />
                   </div>
-                  <span className="text-xs leading-none">{priority ? PRIORITY_ICON[priority] : ""}</span>
                 </div>
 
-                {/* Business info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-white text-sm leading-tight">{lead.name}</span>
+                {/* Business info — takes remaining space */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* Name row */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-white text-sm">{lead.name}</span>
                     {lead.is_hot && (
                       <span className="text-xs px-1 py-0.5 rounded bg-red-950 border border-red-800 text-red-400 font-medium leading-none">🔥</span>
                     )}
-                    {lead.is_favorite && <span className="text-yellow-400 text-xs">⭐</span>}
                     {lead.difficulty_level && (() => {
                       const cfg = DIFFICULTY_CONFIG[lead.difficulty_level];
                       return (
@@ -186,131 +185,123 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
                     })()}
                   </div>
 
-                  {/* Category + platform + location */}
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    {lead.category && (
-                      <span className="text-xs text-ceibo-600">{lead.category}</span>
-                    )}
-                    {lead.category && (lead.platform || lead.location) && (
-                      <span className="text-gray-700 text-xs">·</span>
-                    )}
-                    <span className="text-xs text-gray-600">
-                      {lead.platform === "google_maps" ? "Maps" : "IG"}
-                    </span>
+                  {/* Meta row: category · platform · location */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {lead.category && <span className="text-xs text-ceibo-600">{lead.category}</span>}
+                    <span className="text-gray-700 text-xs">·</span>
+                    <span className="text-xs text-gray-600">{lead.platform === "google_maps" ? "Google Maps" : "Instagram"}</span>
                     {lead.location && (
                       <>
                         <span className="text-gray-700 text-xs">·</span>
-                        <span className="text-xs text-gray-600 truncate max-w-[180px]">{lead.location}</span>
+                        <span className="text-xs text-gray-600 truncate max-w-[200px]">{lead.location}</span>
                       </>
                     )}
                   </div>
 
-                  {/* Reason / description */}
+                  {/* Reason */}
                   {(lead.contact_reason || lead.description) && (
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-1 max-w-md">
+                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-1 max-w-lg">
                       {lead.contact_reason ?? lead.description}
                     </p>
                   )}
 
-                  {/* Tags */}
-                  {tags.length > 0 && (
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700/60">
-                          {tag}
-                        </span>
-                      ))}
-                      {tags.length > 3 && (
-                        <span className="text-xs text-gray-700">+{tags.length - 3}</span>
-                      )}
-                    </div>
-                  )}
+                  {/* Tags + signals row */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {webBadge && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${webBadge.cls}`}>
+                        {webBadge.label}
+                      </span>
+                    )}
+                    {lead.phone && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded border ${
+                        phoneInfo.canWhatsapp
+                          ? "bg-ceibo-950/40 text-ceibo-500 border-ceibo-900"
+                          : "bg-gray-800 text-gray-500 border-gray-700"
+                      }`}>
+                        {phoneInfo.canWhatsapp ? "📱 WhatsApp" : "☎ Fijo"}
+                      </span>
+                    )}
+                    {tags.slice(0, 2).map(tag => (
+                      <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-gray-800/80 text-gray-500 border border-gray-700/60">
+                        {tag}
+                      </span>
+                    ))}
+                    {tags.length > 2 && (
+                      <span className="text-xs text-gray-700">+{tags.length - 2}</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Signals (website + phone) */}
-                <div className="shrink-0 flex flex-col items-end gap-1.5">
-                  {webBadge && (
-                    <span className={`text-xs px-2 py-0.5 rounded border font-medium whitespace-nowrap ${webBadge.cls}`}>
-                      {webBadge.label}
-                    </span>
-                  )}
-                  {lead.phone && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${
-                      phoneInfo.canWhatsapp
-                        ? "bg-ceibo-950 text-ceibo-500 border-ceibo-900"
-                        : "bg-gray-800 text-gray-500 border-gray-700"
-                    }`}>
-                      {phoneInfo.canWhatsapp ? "📱 WhatsApp" : "☎ Fijo"}
-                    </span>
-                  )}
-                </div>
-
-                {/* Status + next action */}
-                <div className="shrink-0 w-28 flex flex-col items-start gap-1">
-                  <span className={`text-xs px-2 py-0.5 rounded border whitespace-nowrap ${status.cls}`}>
+                {/* Status block */}
+                <div className="shrink-0 flex flex-col items-end gap-1 w-28">
+                  <span className={`text-xs px-2 py-1 rounded-lg border whitespace-nowrap ${status.cls}`}>
                     {status.label}
                   </span>
                   {na.action !== "none" && (
-                    <span className={`text-xs ${na.color} whitespace-nowrap`} title={na.label}>
+                    <span className={`text-xs whitespace-nowrap ${na.color}`}>
                       {na.icon} {na.label}
                     </span>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="shrink-0 flex items-center gap-1.5">
+                {/* Action buttons */}
+                <div
+                  className="shrink-0 flex items-center gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Favorite */}
-                  <button
+                  <IconBtn
                     onClick={() => onUpdate(lead.id, { is_favorite: !lead.is_favorite })}
-                    title={lead.is_favorite ? "Quitar favorito" : "Agregar a favoritos"}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors border ${
-                      lead.is_favorite
-                        ? "text-yellow-400 bg-yellow-950/30 border-yellow-900"
-                        : "text-gray-600 hover:text-yellow-400 bg-gray-800 border-gray-700"
-                    }`}
+                    title={lead.is_favorite ? "Quitar favorito" : "Favorito"}
+                    className={lead.is_favorite ? "text-yellow-400 border-yellow-900 bg-yellow-950/30 hover:bg-yellow-950/50 hover:text-yellow-300" : "hover:text-yellow-400"}
                   >
                     {lead.is_favorite ? "⭐" : "☆"}
-                  </button>
+                  </IconBtn>
 
-                  {/* Ver lead - main CTA */}
+                  {/* Ver lead — primary CTA */}
                   <button
                     onClick={() => setSelectedLead(lead)}
-                    className="px-3 py-1.5 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 border border-ceibo-700 text-ceibo-300 text-xs font-medium transition-colors whitespace-nowrap"
+                    className="h-8 px-3 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 border border-ceibo-700 text-ceibo-300 hover:text-ceibo-200 text-xs font-medium transition-colors whitespace-nowrap"
                   >
-                    Ver lead
+                    Ver →
                   </button>
 
-                  {/* Extraer info */}
-                  <button
+                  {/* Extract info */}
+                  <IconBtn
                     onClick={() => setMessageLead(lead)}
                     title="Extraer información para ChatGPT"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-purple-400 transition-colors"
+                    className="hover:text-purple-400 hover:border-purple-800"
                   >
-                    ⬡
-                  </button>
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </IconBtn>
 
                   {/* External profile */}
                   <a
                     href={lead.profile_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Abrir perfil"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-500 hover:text-gray-300 transition-colors"
+                    title="Abrir perfil externo"
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition-colors text-sm"
                   >
-                    ↗
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
                   </a>
 
-                  {/* Delete */}
+                  {/* Delete — visible on row hover only */}
                   {onDelete && (
-                    <button
+                    <IconBtn
                       onClick={() => { if (confirm(`¿Eliminar "${lead.name}"?`)) onDelete(lead.id); }}
                       title="Eliminar lead"
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-red-950 border border-gray-700 hover:border-red-900 text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                      className="opacity-0 group-hover:opacity-100 hover:text-red-400 hover:border-red-900 hover:bg-red-950/40"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                    </button>
+                    </IconBtn>
                   )}
                 </div>
               </div>
