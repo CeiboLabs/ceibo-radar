@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Lead, LeadPriority, LeadStatus } from "@/lib/types";
 import { LeadModal } from "@/components/LeadModal";
-import { MessageModal } from "@/components/MessageModal";
+import { BusinessProfileModal } from "@/components/BusinessProfileModal";
 import { toast } from "@/lib/toast";
 
 // ─── Date grouping helpers ────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ export default function FeedPage() {
       )}
 
       {messageLead && (
-        <MessageModal
+        <BusinessProfileModal
           lead={messageLead}
           onClose={() => setMessageLead(null)}
         />

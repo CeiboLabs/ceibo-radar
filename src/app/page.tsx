@@ -11,7 +11,6 @@ import type { SegmentTag } from "@/lib/sales/segmentationEngine";
 import { ComparatorModal } from "@/components/ComparatorModal";
 import { LeadModal } from "@/components/LeadModal";
 import AddLeadModal from "@/components/AddLeadModal";
-import TemplatesModal from "@/components/TemplatesModal";
 import { toast } from "@/lib/toast";
 
 const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false });
@@ -36,7 +35,7 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
   const [mapLead, setMapLead] = useState<Lead | null>(null);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
+
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -206,12 +205,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
-            <button
-              onClick={() => setTemplatesOpen(true)}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700"
-            >
-              ✉ Plantillas
-            </button>
+
             <button
               onClick={exportCSV}
               disabled={displayedLeads.length === 0}
@@ -386,11 +380,7 @@ export default function Dashboard() {
         />
       )}
 
-      {templatesOpen && (
-        <TemplatesModal
-          onClose={() => setTemplatesOpen(false)}
-        />
-      )}
+
     </main>
   );
 }

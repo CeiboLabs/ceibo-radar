@@ -5,7 +5,7 @@ import type { Lead, LeadPriority, LeadStatus } from "@/lib/types";
 import { toast } from "@/lib/toast";
 import type { DailySection, DailyLead } from "@/lib/sales/dailyListEngine";
 import { LeadModal } from "@/components/LeadModal";
-import { MessageModal } from "@/components/MessageModal";
+import { BusinessProfileModal } from "@/components/BusinessProfileModal";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const statusBadge: Record<LeadStatus, { label: string; cls: string }> = {
@@ -259,7 +259,7 @@ export default function TodayPage() {
         />
       )}
       {messageLead && (
-        <MessageModal
+        <BusinessProfileModal
           lead={messageLead}
           onClose={() => setMessageLead(null)}
         />

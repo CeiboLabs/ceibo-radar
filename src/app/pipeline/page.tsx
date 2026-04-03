@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Lead, LeadStatus } from "@/lib/types";
 import { LeadModal } from "@/components/LeadModal";
-import { MessageModal } from "@/components/MessageModal";
+import { BusinessProfileModal } from "@/components/BusinessProfileModal";
 import { classifyPhone } from "@/lib/phone-classifier";
 import { toast } from "@/lib/toast";
 
@@ -491,7 +491,7 @@ export default function PipelinePage() {
         />
       )}
       {messageLead && (
-        <MessageModal
+        <BusinessProfileModal
           lead={messageLead}
           onClose={() => setMessageLead(null)}
         />

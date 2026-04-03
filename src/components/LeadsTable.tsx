@@ -7,7 +7,7 @@ import { getNextAction } from "@/lib/sales/nextActionEngine";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
 import { classifyPhone } from "@/lib/phone-classifier";
 import { LeadModal } from "./LeadModal";
-import { MessageModal } from "./MessageModal";
+import { BusinessProfileModal } from "./BusinessProfileModal";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -450,7 +450,7 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
       )}
 
       {messageLead && (
-        <MessageModal
+        <BusinessProfileModal
           lead={messageLead}
           onClose={() => setMessageLead(null)}
         />
