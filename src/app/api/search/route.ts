@@ -136,13 +136,13 @@ export async function POST(req: NextRequest) {
     const allSaved: Array<{ has_website: boolean; website_quality: string | null }> = [];
 
     for (const location of locations) {
-      const scraped: ScrapedBusiness[] = [];
+      const byPlatform: ScrapedBusiness[][] = [];
 
       if (platforms.includes("google_maps")) {
         await send({ type: "progress", message: `Buscando "${keyword}" en Google Maps (${location})...` });
         try {
           const results = await scrapeGoogleMaps(keyword, location, maxScrolls);
-          scraped.push(...results);
+          byPlatform.push(results);
           await send({ type: "progress", message: `Google Maps (${location}): ${results.length} negocios` });
         } catch {
           await send({ type: "progress", message: `Google Maps (${location}): error al buscar` });
@@ -153,13 +153,21 @@ export async function POST(req: NextRequest) {
         await send({ type: "progress", message: `Buscando "${keyword}" en Instagram (${location})...` });
         try {
           const results = await scrapeInstagram(keyword, location, instagramQueryCount);
-          scraped.push(...results);
+          byPlatform.push(results);
           await send({ type: "progress", message: `Instagram (${location}): ${results.length} perfiles` });
         } catch {
           await send({ type: "progress", message: `Instagram (${location}): error al buscar` });
         }
       }
 
+      // Interleave results so both platforms are represented fairly before capping
+      const scraped: ScrapedBusiness[] = [];
+      const maxLen = Math.max(...byPlatform.map(a => a.length), 0);
+      for (let i = 0; i < maxLen; i++) {
+        for (const arr of byPlatform) {
+          if (i < arr.length) scraped.push(arr[i]);
+        }
+      }
 
       if (scraped.length === 0) continue;
 
