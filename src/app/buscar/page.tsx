@@ -12,13 +12,7 @@ const KEYWORD_SUGGESTIONS = [
   "pilates", "veterinaria", "contador", "psicólogo", "arquitecto",
 ];
 
-type DepthKey = "quick" | "standard" | "deep";
-
-const DEPTH_CONFIG: Record<DepthKey, { label: string; hint: string; maxScrolls: number }> = {
-  quick:    { label: "Rápida",   hint: "~15 res/lugar",  maxScrolls: 5  },
-  standard: { label: "Estándar", hint: "~30 res/lugar",  maxScrolls: 12 },
-  deep:     { label: "Profunda", hint: "~50 res/lugar",  maxScrolls: 22 },
-};
+const MAX_LEADS_PRESETS = [5, 10, 20, 30, 50];
 
 const LOCATION_PRESETS: { label: string; terms: string[] }[] = [
   {
@@ -65,7 +59,7 @@ interface SearchHistoryItem {
   keyword: string;
   locations: string[];
   platforms: Platform[];
-  depth: DepthKey;
+  maxLeads: number;
   total_found: number;
   searched_at: string;
 }
@@ -98,7 +92,7 @@ export default function BuscarPage() {
     new Set(["Montevideo, Uruguay"])
   );
   const [platforms, setPlatforms] = useState<Platform[]>(["google_maps", "instagram"]);
-  const [depth, setDepth] = useState<DepthKey>("standard");
+  const [maxLeads, setMaxLeads] = useState(20);
   const [showAllDepts, setShowAllDepts] = useState(false);
 
   // Search state
@@ -145,8 +139,6 @@ export default function BuscarPage() {
     setProgressLog([]);
     setResult(null);
 
-    const maxScrolls = DEPTH_CONFIG[depth].maxScrolls;
-
     try {
       const res = await fetch("/api/search", {
         method: "POST",
@@ -155,7 +147,7 @@ export default function BuscarPage() {
           keyword: keyword.trim(),
           locations: Array.from(selectedLocations),
           platforms,
-          maxScrolls,
+          maxLeads,
         }),
       });
 
@@ -194,7 +186,7 @@ export default function BuscarPage() {
         keyword: keyword.trim(),
         locations: Array.from(selectedLocations),
         platforms,
-        depth,
+        maxLeads,
         total_found: finalTotal,
         searched_at: new Date().toISOString(),
       };
@@ -214,7 +206,7 @@ export default function BuscarPage() {
     setKeyword(item.keyword);
     setSelectedLocations(new Set(item.locations));
     setPlatforms(item.platforms);
-    setDepth(item.depth);
+    setMaxLeads(item.maxLeads ?? 20);
     setResult(null);
     setProgressLog([]);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -370,27 +362,28 @@ export default function BuscarPage() {
               </div>
             </div>
 
-            {/* Depth */}
+            {/* Max leads */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Profundidad</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Máx. leads por lugar
+              </label>
               <div className="flex gap-2 flex-wrap">
-                {(Object.keys(DEPTH_CONFIG) as DepthKey[]).map(d => (
+                {MAX_LEADS_PRESETS.map(n => (
                   <button
-                    key={d}
+                    key={n}
                     type="button"
-                    onClick={() => setDepth(d)}
+                    onClick={() => setMaxLeads(n)}
                     className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      depth === d
+                      maxLeads === n
                         ? "bg-gray-700 border-gray-500 text-white font-medium"
                         : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
                     }`}
-                    title={DEPTH_CONFIG[d].hint}
                   >
-                    {DEPTH_CONFIG[d].label}
-                    <span className="ml-1.5 text-xs opacity-50">{DEPTH_CONFIG[d].hint}</span>
+                    {n}
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-600 mt-2">Si hay menos resultados, trae todos los que encuentra</p>
             </div>
           </div>
 

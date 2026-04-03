@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
     ? [config.location.trim()]
     : [];
   const platforms: Platform[] = config.platforms ?? [];
-  const maxScrolls = config.maxScrolls ?? 8;
+  const maxLeads: number = (body.maxLeads as number) ?? 20;
+  // Derive scraper depth from maxLeads: ~3.5 results per scroll
+  const maxScrolls = Math.max(3, Math.ceil(maxLeads / 3));
+  const instagramQueryCount = maxLeads <= 10 ? 1 : maxLeads <= 25 ? 2 : 3;
 
   if (!keyword || !locations.length || !platforms.length) {
     return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -107,8 +110,6 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   }
-
-  const instagramQueryCount = maxScrolls <= 5 ? 1 : maxScrolls <= 12 ? 2 : 3;
 
   const stream = new TransformStream<Uint8Array, Uint8Array>();
   const writer = stream.writable.getWriter();
@@ -180,6 +181,15 @@ export async function POST(req: NextRequest) {
       }
 
       if (newBusinesses.length === 0) continue;
+
+      // Cap to maxLeads per location
+      const capped = newBusinesses.splice(maxLeads);
+      if (capped.length > 0) {
+        await send({
+          type: "progress",
+          message: `${location}: limitando a ${maxLeads} leads (${capped.length} descartados por límite)`,
+        });
+      }
 
       // Mark as seen immediately so parallel locations don't reprocess
       newBusinesses.forEach((b) => {

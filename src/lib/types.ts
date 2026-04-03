@@ -51,7 +51,8 @@ export interface SearchConfig {
   keyword: string;
   locations: string[];
   platforms: Platform[];
-  maxScrolls: number; // controls Google Maps depth and Instagram query count
+  maxLeads?: number;   // max leads to save per location
+  maxScrolls?: number; // legacy: controls Google Maps depth directly
 }
 
 export type LeadStatus = "not_contacted" | "contacted" | "interested" | "proposal_sent" | "closed_won" | "closed_lost";
