@@ -1,5 +1,6 @@
 import { generateWithTemplates } from "./messages/template-generator";
 import { buildLeadContext } from "./messages/types";
+import { classifyPhone } from "./phone-classifier";
 import type { Lead } from "./types";
 
 export interface ContactActionResult {
@@ -10,13 +11,13 @@ export interface ContactActionResult {
 export function buildWhatsAppAction(lead: Lead): ContactActionResult | null {
   if (!lead.phone) return null;
 
+  const phoneInfo = classifyPhone(lead.phone);
+  if (!phoneInfo.canWhatsapp || !phoneInfo.whatsappUrl) return null;
+
   const ctx = buildLeadContext(lead);
   const messages = generateWithTemplates(ctx);
   const message = messages.whatsapp;
-
-  // Strip non-digits, keep leading + for international format
-  const phone = lead.phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  const url = `${phoneInfo.whatsappUrl}?text=${encodeURIComponent(message)}`;
 
   return { url, message_preview: message.slice(0, 120) };
 }

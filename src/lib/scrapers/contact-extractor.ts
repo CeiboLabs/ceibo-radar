@@ -1,3 +1,5 @@
+import { classifyPhone } from "../phone-classifier";
+
 export interface ExtractedContacts {
   phone?: string;
   email?: string;
@@ -17,7 +19,19 @@ const EMAIL_PATTERN = /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g;
 const WHATSAPP_PATTERN = /(?:wa\.me|whatsapp\.com\/send\?phone=)[\/=]?(\d{8,15})/gi;
 
 function cleanPhone(raw: string): string {
-  return raw.replace(/[\s\-.()]/g, "").replace(/^0/, "");
+  // Keep leading 0 — phone-classifier needs "09XXXXXXX" to recognize Uruguay mobile
+  return raw.replace(/[\s\-.()]/g, "");
+}
+
+function validateAndNormalizePhone(raw: string): string | null {
+  const classification = classifyPhone(raw);
+  if (classification.type === "unknown") return null;
+  // For mobile with a WhatsApp URL, extract the E.164 number
+  if (classification.whatsappUrl) {
+    const m = classification.whatsappUrl.match(/wa\.me\/(\d+)/);
+    if (m) return "+" + m[1];
+  }
+  return cleanPhone(raw);
 }
 
 export function extractContactsFromHtml(
@@ -51,8 +65,11 @@ export function extractContactsFromHtml(
     WHATSAPP_PATTERN.lastIndex = 0;
     const waMatch = WHATSAPP_PATTERN.exec(stripped);
     if (waMatch) {
-      result.phone = waMatch[1];
-      return result; // WhatsApp found, use it
+      const normalized = validateAndNormalizePhone(waMatch[1]);
+      if (normalized) {
+        result.phone = normalized;
+        return result; // WhatsApp found, use it
+      }
     }
   }
 
@@ -61,12 +78,14 @@ export function extractContactsFromHtml(
     for (const pattern of PHONE_PATTERNS) {
       pattern.lastIndex = 0;
       const matches = stripped.match(pattern) ?? [];
-      const firstMatch = matches[0];
-      if (firstMatch) {
-        // Take first match, clean it
-        result.phone = cleanPhone(firstMatch);
-        break;
+      for (const match of matches) {
+        const normalized = validateAndNormalizePhone(match);
+        if (normalized) {
+          result.phone = normalized;
+          break;
+        }
       }
+      if (result.phone) break;
     }
   }
 
