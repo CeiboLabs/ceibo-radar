@@ -26,6 +26,14 @@ interface LeadsTableProps {
   onDelete?: (id: number) => void;
 }
 
+// Auto-tags that duplicate visible badges — hide from table display
+const HIDDEN_AUTO_TAGS = new Set([
+  "sin-website", "website-malo", "website-mejorable",
+  "sin-contacto", "tiene-telefono", "tiene-email",
+  "alta-prioridad", "baja-prioridad",
+  "sin-presencia-digital", "instagram-activo",
+]);
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PRIORITY_COLOR: Record<LeadPriority, { score: string; bar: string; border: string }> = {
   high:   { score: "text-red-400",    bar: "bg-red-500",    border: "border-l-2 border-red-800"    },
@@ -133,7 +141,8 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
             const status   = STATUS_CFG[lead.status];
             const na       = getNextAction(lead);
             const phoneInfo = classifyPhone(lead.phone);
-            const tags: string[] = (() => { try { return JSON.parse(lead.tags ?? "[]"); } catch { return []; } })();
+            const allTags: string[] = (() => { try { return JSON.parse(lead.tags ?? "[]"); } catch { return []; } })();
+            const tags = allTags.filter(t => !HIDDEN_AUTO_TAGS.has(t));
 
             const webKey = !lead.has_website ? "no_website"
               : (lead.website_quality as WebsiteQuality | null) ?? null;

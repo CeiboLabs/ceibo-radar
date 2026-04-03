@@ -82,12 +82,18 @@ export default function Dashboard() {
     () => Array.from(new Set(leads.map((l) => l.location_region).filter(Boolean) as string[])).sort(),
     [leads]
   );
+  const HIDDEN_AUTO_TAGS = new Set([
+    "sin-website", "website-malo", "website-mejorable",
+    "sin-contacto", "tiene-telefono", "tiene-email",
+    "alta-prioridad", "baja-prioridad",
+    "sin-presencia-digital", "instagram-activo",
+  ]);
   const distinctTags = useMemo(() => {
     const tagSet = new Set<string>();
     leads.forEach((lead) => {
       try {
         const t: string[] = JSON.parse(lead.tags ?? "[]");
-        t.forEach((tag) => tagSet.add(tag));
+        t.filter(tag => !HIDDEN_AUTO_TAGS.has(tag)).forEach((tag) => tagSet.add(tag));
       } catch {}
     });
     return Array.from(tagSet).sort();
