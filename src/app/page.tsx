@@ -320,6 +320,7 @@ export default function Dashboard() {
                   return next;
                 });
               }}
+              onSelectAll={(ids) => setCompareIds(new Set(ids))}
               onUpdate={handleUpdate}
             />
           )}

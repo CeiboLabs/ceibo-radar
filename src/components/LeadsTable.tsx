@@ -12,6 +12,7 @@ interface LeadsTableProps {
   leads: Lead[];
   compareIds?: Set<number>;
   onToggleCompare?: (id: number) => void;
+  onSelectAll?: (ids: number[]) => void;
   onUpdate: (
     id: number,
     data: {
@@ -135,7 +136,7 @@ function StatusDropdown({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDelete }: LeadsTableProps) {
+export function LeadsTable({ leads, compareIds, onToggleCompare, onSelectAll, onUpdate, onDelete }: LeadsTableProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [messageLead, setMessageLead]   = useState<Lead | null>(null);
   const [sortKey, setSortKey]           = useState<SortKey>("lead_score");
@@ -175,10 +176,23 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
     { key: "created_at", label: "Reciente" },
   ];
 
+  const allSelected = sorted.length > 0 && sorted.every(l => compareIds?.has(l.id));
+  const someSelected = !allSelected && sorted.some(l => compareIds?.has(l.id));
+
   return (
     <>
       {/* Sort bar — outside the card to avoid alignment issues */}
       <div className="flex items-center gap-2 px-1 mb-2">
+        {onToggleCompare && onSelectAll && (
+          <input
+            type="checkbox"
+            checked={allSelected}
+            ref={el => { if (el) el.indeterminate = someSelected; }}
+            onChange={() => allSelected ? onSelectAll([]) : onSelectAll(sorted.map(l => l.id))}
+            className="w-3.5 h-3.5 rounded accent-ceibo-500 cursor-pointer"
+            title="Seleccionar todos"
+          />
+        )}
         <span className="text-xs text-gray-600">Ordenar:</span>
         {SORT_OPTIONS.map(opt => (
           <button
