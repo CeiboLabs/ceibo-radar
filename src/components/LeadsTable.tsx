@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Lead, LeadPriority, LeadStatus, WebsiteQuality } from "@/lib/types";
 import { getNextAction } from "@/lib/sales/nextActionEngine";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
@@ -80,12 +80,67 @@ function IconBtn({
   );
 }
 
+// ─── Status Dropdown ──────────────────────────────────────────────────────────
+function StatusDropdown({
+  leadId,
+  currentStatus,
+  onSelect,
+  onClose,
+}: {
+  leadId: number;
+  currentStatus: LeadStatus;
+  onSelect: (status: LeadStatus) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 mt-1 z-50 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden"
+      style={{ minWidth: "140px" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {(Object.keys(STATUS_CFG) as LeadStatus[]).map((s) => {
+        const cfg = STATUS_CFG[s];
+        return (
+          <button
+            key={s}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(s);
+            }}
+            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-700 transition-colors flex items-center gap-2 ${
+              s === currentStatus ? "bg-gray-700/60" : ""
+            }`}
+          >
+            <span className={`inline-block px-1.5 py-0.5 rounded border text-xs font-medium ${cfg.cls}`}>
+              {cfg.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDelete }: LeadsTableProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [messageLead, setMessageLead]   = useState<Lead | null>(null);
   const [sortKey, setSortKey]           = useState<SortKey>("lead_score");
   const [sortDir, setSortDir]           = useState<SortDir>("desc");
+  const [statusChanging, setStatusChanging] = useState<number | null>(null);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
@@ -103,8 +158,13 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
 
   if (leads.length === 0) {
     return (
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-        <p className="text-gray-500 text-sm">No hay leads. Realizá una búsqueda para comenzar.</p>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-16 text-center space-y-3">
+        <div className="text-4xl">🔍</div>
+        <p className="text-gray-400 font-medium">No hay leads que coincidan</p>
+        <p className="text-gray-600 text-sm">Probá cambiando los filtros o realizá una nueva búsqueda</p>
+        <a href="/buscar" className="inline-block mt-2 text-xs px-4 py-2 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 border border-ceibo-700 text-ceibo-300 transition-colors">
+          Nueva búsqueda →
+        </a>
       </div>
     );
   }
@@ -247,15 +307,35 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
                   </div>
                 </div>
 
-                {/* Status block */}
-                <div className="shrink-0 flex flex-col items-end gap-1 w-28">
-                  <span className={`text-xs px-2 py-1 rounded-lg border whitespace-nowrap ${status.cls}`}>
+                {/* Status block — clickable to change status */}
+                <div
+                  className="shrink-0 flex flex-col items-end gap-1 w-28 relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStatusChanging(statusChanging === lead.id ? null : lead.id);
+                    }}
+                    className={`text-xs px-2 py-1 rounded-lg border whitespace-nowrap hover:opacity-80 transition-opacity ${status.cls}`}
+                  >
                     {status.label}
-                  </span>
+                  </button>
                   {na.action !== "none" && (
                     <span className={`text-xs whitespace-nowrap ${na.color}`}>
                       {na.icon} {na.label}
                     </span>
+                  )}
+                  {statusChanging === lead.id && (
+                    <StatusDropdown
+                      leadId={lead.id}
+                      currentStatus={lead.status}
+                      onSelect={(newStatus) => {
+                        onUpdate(lead.id, { status: newStatus });
+                        setStatusChanging(null);
+                      }}
+                      onClose={() => setStatusChanging(null)}
+                    />
                   )}
                 </div>
 

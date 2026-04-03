@@ -44,23 +44,37 @@ function LeadCard({
   onOpenMessage: () => void;
   onDragStart: (e: React.DragEvent, leadId: number) => void;
 }) {
+  const priority = lead.lead_priority;
+  const scoreColor = priority === "high" ? "text-red-400" : priority === "medium" ? "text-yellow-400" : "text-gray-500";
+  const borderColor = priority === "high" ? "border-l-2 border-red-800" : priority === "medium" ? "border-l-2 border-yellow-800" : "";
+
+  // Website indicator
+  const webIndicator = !lead.has_website
+    ? { label: "Sin web", cls: "text-red-400 bg-red-950/50 border-red-900" }
+    : lead.website_quality === "poor"
+    ? { label: "Web mala", cls: "text-orange-400 bg-orange-950/50 border-orange-900" }
+    : lead.website_quality === "needs_improvement"
+    ? { label: "Web débil", cls: "text-yellow-500 bg-yellow-950/40 border-yellow-900" }
+    : null; // good website — don't show badge
+
   const phoneInfo = classifyPhone(lead.phone);
-  const phoneEmoji = phoneInfo.type === "mobile" ? "📱" : lead.phone ? "📞" : null;
 
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, lead.id)}
-      className="bg-gray-900 border border-gray-800 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-gray-700 transition-colors select-none"
+      onClick={onOpenModal}
+      className={`bg-gray-900 border border-gray-800 rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-gray-700 transition-colors select-none group ${borderColor}`}
     >
-      {/* Name + score */}
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <div className="flex items-center gap-1.5 min-w-0">
+      {/* Name row */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {lead.is_hot && <span className="text-xs shrink-0">🔥</span>}
-          <span className="text-sm font-semibold text-white truncate leading-tight">{lead.name}</span>
+          {lead.is_favorite && <span className="text-xs shrink-0">⭐</span>}
+          <span className="text-sm font-semibold text-white leading-tight line-clamp-2">{lead.name}</span>
         </div>
         {lead.lead_score !== null && (
-          <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${scoreBadgeClass(lead.lead_score)}`}>
+          <span className={`text-xs font-mono font-bold shrink-0 ${scoreColor}`}>
             {lead.lead_score}
           </span>
         )}
@@ -68,37 +82,39 @@ function LeadCard({
 
       {/* Category */}
       {lead.category && (
-        <div className="text-xs text-ceibo-600 truncate mb-1">{lead.category}</div>
+        <div className="text-xs text-ceibo-600 truncate mb-1.5">{lead.category}</div>
       )}
 
-      {/* Phone */}
-      {lead.phone && (
-        <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-          {phoneEmoji && <span>{phoneEmoji}</span>}
-          <span className="truncate">{lead.phone}</span>
-        </div>
-      )}
-
-      {/* Location */}
-      {lead.location && (
-        <div className="text-xs text-gray-600 truncate mb-2">
-          {lead.location.split(",")[0]}
-        </div>
-      )}
+      {/* Web + phone signals */}
+      <div className="flex flex-wrap gap-1 mb-2">
+        {webIndicator && (
+          <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${webIndicator.cls}`}>
+            {webIndicator.label}
+          </span>
+        )}
+        {lead.phone && (
+          <span className={`text-xs px-1.5 py-0.5 rounded border ${phoneInfo.canWhatsapp ? "text-ceibo-500 bg-ceibo-950/40 border-ceibo-900" : "text-gray-500 bg-gray-800 border-gray-700"}`}>
+            {phoneInfo.canWhatsapp ? "📱" : "☎"}
+          </span>
+        )}
+      </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 mt-1">
+      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
-          className="flex-1 text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 border border-gray-700 transition-colors"
+          className="flex-1 text-xs px-2 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-300 border border-ceibo-700 transition-colors"
         >
-          Ver
+          Ver →
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onOpenMessage(); }}
-          className="flex-1 text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 border border-gray-700 transition-colors"
+          className="text-xs px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700 transition-colors"
+          title="Extraer info"
         >
-          Msg
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
         </button>
       </div>
     </div>
@@ -450,13 +466,29 @@ export default function PipelinePage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center gap-3 text-gray-500">
-            <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            <span className="text-sm">Cargando leads...</span>
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {COLUMNS.map((col) => (
+              <div key={col.status} className="flex flex-col w-64 shrink-0 rounded-xl border border-gray-800 bg-gray-900/40">
+                <div className={`px-4 pt-4 pb-3 border-b ${col.headerBorder}`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${col.headerText}`}>{col.label}</span>
+                    <div className="w-5 h-4 bg-gray-800 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex-1 p-3 space-y-2 min-h-[200px]">
+                  {Array.from({ length: Math.floor(Math.random() * 3) + 1 }).map((_, i) => (
+                    <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-3 space-y-2">
+                      <div className="h-4 bg-gray-800 rounded animate-pulse w-3/4" />
+                      <div className="h-3 bg-gray-800/60 rounded animate-pulse w-1/2" />
+                      <div className="flex gap-1">
+                        <div className="h-5 w-14 bg-gray-800 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : (

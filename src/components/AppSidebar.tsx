@@ -83,7 +83,7 @@ export function AppSidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-gray-800/60 space-y-3">
-        <div className="text-xs text-gray-700 font-mono">v1.2.0</div>
+        <div className="text-xs text-gray-700 font-mono">v1.3.0</div>
         {userEmail && (
           <div className="text-xs text-gray-500 truncate" title={userEmail}>{userEmail}</div>
         )}

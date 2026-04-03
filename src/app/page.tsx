@@ -22,8 +22,37 @@ import { toast } from "@/lib/toast";
 
 const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false });
 
+function LeadsSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-800 overflow-hidden divide-y divide-gray-800/60">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5 bg-gray-900">
+          <div className="w-3.5 h-3.5 rounded bg-gray-800 shrink-0" />
+          <div className="w-14 flex flex-col gap-1.5 shrink-0">
+            <div className="h-4 w-8 bg-gray-800 rounded animate-pulse" />
+            <div className="h-1 w-10 bg-gray-800 rounded-full animate-pulse" />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <div className="h-4 w-48 bg-gray-800 rounded animate-pulse" />
+            <div className="h-3 w-64 bg-gray-800/60 rounded animate-pulse" />
+            <div className="h-3 w-36 bg-gray-800/40 rounded animate-pulse" />
+          </div>
+          <div className="w-24 h-6 bg-gray-800 rounded-lg animate-pulse shrink-0" />
+          <div className="flex gap-1.5 shrink-0">
+            <div className="w-8 h-8 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="w-16 h-8 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="w-8 h-8 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="w-8 h-8 bg-gray-800 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -47,19 +76,24 @@ export default function Dashboard() {
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const fetchLeads = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (websiteFilter !== "all") params.set("website_filter", websiteFilter);
-    if (priority !== "all") params.set("priority", priority);
-    if (platform !== "all") params.set("platform", platform);
-    if (status !== "all") params.set("status", status);
-    if (favoritesOnly) params.set("favorites", "1");
-    if (hotOnly) params.set("hot", "1");
-    if (difficulty !== "all") params.set("difficulty", difficulty);
-    if (segment !== "all") params.set("segment", segment);
-    if (locationRegion !== "all") params.set("region", locationRegion);
-    const res = await fetch(`/api/leads?${params}`);
-    const data = await res.json();
-    setLeads(Array.isArray(data) ? data : []);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (websiteFilter !== "all") params.set("website_filter", websiteFilter);
+      if (priority !== "all") params.set("priority", priority);
+      if (platform !== "all") params.set("platform", platform);
+      if (status !== "all") params.set("status", status);
+      if (favoritesOnly) params.set("favorites", "1");
+      if (hotOnly) params.set("hot", "1");
+      if (difficulty !== "all") params.set("difficulty", difficulty);
+      if (segment !== "all") params.set("segment", segment);
+      if (locationRegion !== "all") params.set("region", locationRegion);
+      const res = await fetch(`/api/leads?${params}`);
+      const data = await res.json();
+      setLeads(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
   }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
@@ -272,6 +306,8 @@ export default function Dashboard() {
               leads={displayedLeads}
               onLeadClick={(lead) => setMapLead(lead)}
             />
+          ) : loading ? (
+            <LeadsSkeleton />
           ) : (
             <LeadsTable
               leads={displayedLeads}
