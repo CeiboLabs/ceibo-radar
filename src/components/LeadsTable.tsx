@@ -109,30 +109,36 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onUpdate, onDel
     );
   }
 
+  const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+    { key: "lead_score", label: "Score" },
+    { key: "name",       label: "Nombre" },
+    { key: "created_at", label: "Reciente" },
+  ];
+
   return (
     <>
+      {/* Sort bar — outside the card to avoid alignment issues */}
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <span className="text-xs text-gray-600">Ordenar:</span>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => toggleSort(opt.key)}
+            className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+              sortKey === opt.key
+                ? "bg-gray-800 border-gray-600 text-gray-200"
+                : "border-transparent text-gray-600 hover:text-gray-400"
+            }`}
+          >
+            {opt.label}
+            {sortKey === opt.key && (
+              <span className="ml-1 text-ceibo-400">{sortDir === "desc" ? "↓" : "↑"}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       <div className="rounded-xl border border-gray-800 overflow-hidden">
-
-        {/* Sort header */}
-        <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-3">
-          {onToggleCompare && <div className="w-4 shrink-0" />}
-          <div className="w-14 shrink-0">
-            <button onClick={() => toggleSort("lead_score")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "lead_score" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
-              Score {sortKey === "lead_score" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
-            </button>
-          </div>
-          <div className="flex-1">
-            <button onClick={() => toggleSort("name")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "name" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
-              Negocio {sortKey === "name" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
-            </button>
-          </div>
-          <div className="ml-auto">
-            <button onClick={() => toggleSort("created_at")} className={`text-xs uppercase tracking-wider font-medium flex items-center gap-0.5 transition-colors ${sortKey === "created_at" ? "text-ceibo-400" : "text-gray-600 hover:text-gray-400"}`}>
-              Fecha {sortKey === "created_at" ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
-            </button>
-          </div>
-        </div>
-
         {/* Lead rows */}
         <div className="divide-y divide-gray-800/60">
           {sorted.map((lead) => {

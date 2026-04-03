@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+
+const HIDDEN_AUTO_TAGS = new Set([
+  "sin-website", "website-malo", "website-mejorable",
+  "sin-contacto", "tiene-telefono", "tiene-email",
+  "alta-prioridad", "baja-prioridad",
+  "sin-presencia-digital", "instagram-activo",
+]);
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { LeadsTable } from "@/components/LeadsTable";
@@ -82,12 +89,6 @@ export default function Dashboard() {
     () => Array.from(new Set(leads.map((l) => l.location_region).filter(Boolean) as string[])).sort(),
     [leads]
   );
-  const HIDDEN_AUTO_TAGS = new Set([
-    "sin-website", "website-malo", "website-mejorable",
-    "sin-contacto", "tiene-telefono", "tiene-email",
-    "alta-prioridad", "baja-prioridad",
-    "sin-presencia-digital", "instagram-activo",
-  ]);
   const distinctTags = useMemo(() => {
     const tagSet = new Set<string>();
     leads.forEach((lead) => {
