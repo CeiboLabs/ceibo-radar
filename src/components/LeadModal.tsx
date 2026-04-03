@@ -8,6 +8,7 @@ import type {
 import type { ScoreBreakdown } from "@/lib/lead-score";
 import type { AiLeadAnalysis } from "@/lib/ai/types";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
+import { toast } from "@/lib/toast";
 import { getContactTiming } from "@/lib/sales/contactTimingEngine";
 import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
 import { classifyPhone } from "@/lib/phone-classifier";
@@ -44,7 +45,8 @@ const statusConfig: Record<LeadStatus, { label: string; className: string }> = {
   contacted:     { label: "Contactado",        className: "bg-blue-900 text-blue-300"       },
   interested:    { label: "Interesado",        className: "bg-ceibo-900 text-ceibo-300"     },
   proposal_sent: { label: "Propuesta enviada", className: "bg-purple-900 text-purple-300"  },
-  closed_won:    { label: "Cerrado",           className: "bg-emerald-900 text-emerald-300" },
+  closed_won:    { label: "Cerrado ✓",         className: "bg-emerald-900 text-emerald-300" },
+  closed_lost:   { label: "Perdido",           className: "bg-red-900 text-red-300"         },
 };
 const qualityConfig: Record<WebsiteQuality, { label: string; bar: string; text: string }> = {
   good:              { label: "GOOD WEBSITE", bar: "bg-ceibo-500",  text: "text-ceibo-400"  },
@@ -239,9 +241,25 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
 
   const handleDelete = async () => {
     if (!confirm(`¿Eliminar el lead "${lead.name}"? Esta acción no se puede deshacer.`)) return;
-    await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+    if (!res.ok) { toast("Error al eliminar el lead", "error"); return; }
+    toast("Lead eliminado");
     onDelete?.(lead.id);
     onClose();
+  };
+
+  const [recalculating, setRecalculating] = useState(false);
+  const handleRecalculate = async () => {
+    setRecalculating(true);
+    const res = await fetch(`/api/leads/${lead.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recalculate: true }),
+    });
+    setRecalculating(false);
+    if (!res.ok) { toast("Error al recalcular el score", "error"); return; }
+    toast("Score recalculado");
+    onUpdate(lead.id, {});
   };
 
   const handleAiAnalyze = async () => {
@@ -936,6 +954,14 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
             className="px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition-colors border border-gray-700"
           >
             Cerrar
+          </button>
+          <button
+            onClick={handleRecalculate}
+            disabled={recalculating}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-yellow-400 rounded-lg text-sm transition-colors border border-gray-700 disabled:opacity-40"
+            title="Recalcular score"
+          >
+            {recalculating ? "..." : "↻ Score"}
           </button>
           {onDelete && (
             <button

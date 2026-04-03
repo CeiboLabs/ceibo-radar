@@ -10,6 +10,9 @@ import type { DifficultyLevel } from "@/lib/sales/difficultyEngine";
 import type { SegmentTag } from "@/lib/sales/segmentationEngine";
 import { ComparatorModal } from "@/components/ComparatorModal";
 import { LeadModal } from "@/components/LeadModal";
+import AddLeadModal from "@/components/AddLeadModal";
+import TemplatesModal from "@/components/TemplatesModal";
+import { toast } from "@/lib/toast";
 
 const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false });
 
@@ -32,6 +35,10 @@ export default function Dashboard() {
   const [comparatorLead, setComparatorLead] = useState<Lead | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
   const [mapLead, setMapLead] = useState<Lead | null>(null);
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     const params = new URLSearchParams();
@@ -88,16 +95,19 @@ export default function Dashboard() {
   }, [leads]);
 
   const handleUpdate = async (id: number, data: { status?: LeadStatus; notes?: string; tags?: string[]; sequence_stage?: string; next_followup_at?: string | null; is_favorite?: boolean }) => {
-    await fetch(`/api/leads/${id}`, {
+    const res = await fetch(`/api/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) { toast("Error al actualizar el lead", "error"); return; }
     await fetchLeads();
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    if (!res.ok) { toast("Error al eliminar el lead", "error"); return; }
+    toast("Lead eliminado");
     await fetchLeads();
   };
 
@@ -114,6 +124,29 @@ export default function Dashboard() {
     setSegment("all");
     setLocationRegion("all");
     setNameSearch("");
+  };
+
+  const handleBulkAction = async (action: "status" | "recalculate" | "delete", value?: string) => {
+    if (compareIds.size === 0) return;
+    if (action === "delete" && !confirm(`¿Eliminar ${compareIds.size} leads? Esta acción no se puede deshacer.`)) return;
+    setBulkLoading(true);
+    const res = await fetch("/api/leads/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(compareIds), action, value }),
+    });
+    setBulkLoading(false);
+    if (!res.ok) {
+      toast("Error en la acción masiva", "error");
+    } else {
+      const count = compareIds.size;
+      if (action === "delete") toast(`${count} lead${count > 1 ? "s" : ""} eliminado${count > 1 ? "s" : ""}`);
+      else if (action === "status") toast(`Estado actualizado en ${count} lead${count > 1 ? "s" : ""}`);
+      else if (action === "recalculate") toast(`Score recalculado en ${count} lead${count > 1 ? "s" : ""}`);
+    }
+    setCompareIds(new Set());
+    setBulkStatus("");
+    await fetchLeads();
   };
 
   const handleExport = () => {
@@ -171,14 +204,26 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
+            <button
+              onClick={() => setTemplatesOpen(true)}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700"
+            >
+              ✉ Plantillas
+            </button>
             <button
               onClick={exportCSV}
               disabled={displayedLeads.length === 0}
               className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-40"
             >
               ↓ CSV ({displayedLeads.length})
+            </button>
+            <button
+              onClick={() => setAddLeadOpen(true)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors border border-gray-600"
+            >
+              + Agregar
             </button>
             <Link
               href="/buscar"
@@ -242,23 +287,63 @@ export default function Dashboard() {
             />
           )}
 
-          {/* Comparator floating bar */}
-          {compareIds.size >= 2 && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 border border-ceibo-700 rounded-2xl px-5 py-3 flex items-center gap-4 shadow-2xl">
+          {/* Comparator / bulk actions floating bar */}
+          {compareIds.size >= 1 && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 border border-ceibo-700 rounded-2xl px-5 py-3 flex items-center gap-3 shadow-2xl">
               <span className="text-sm text-gray-300">
-                <span className="text-ceibo-400 font-bold">{compareIds.size}</span> leads seleccionados
+                <span className="text-ceibo-400 font-bold">{compareIds.size}</span> seleccionados
               </span>
+              {compareIds.size >= 2 && (
+                <button
+                  onClick={() => setComparatorOpen(true)}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold transition-colors"
+                >
+                  Comparar →
+                </button>
+              )}
+              <div className="flex items-center gap-1">
+                <select
+                  value={bulkStatus}
+                  onChange={(e) => setBulkStatus(e.target.value as LeadStatus | "")}
+                  className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded-lg px-2 py-1.5"
+                >
+                  <option value="">Cambiar estado…</option>
+                  <option value="not_contacted">Sin contactar</option>
+                  <option value="contacted">Contactado</option>
+                  <option value="interested">Interesado</option>
+                  <option value="proposal_sent">Propuesta enviada</option>
+                  <option value="closed_won">Cerrado ganado</option>
+                  <option value="closed_lost">Cerrado perdido</option>
+                </select>
+                {bulkStatus && (
+                  <button
+                    onClick={() => handleBulkAction("status", bulkStatus)}
+                    disabled={bulkLoading}
+                    className="text-xs px-2 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors disabled:opacity-50"
+                  >
+                    ✓
+                  </button>
+                )}
+              </div>
               <button
-                onClick={() => setComparatorOpen(true)}
-                className="text-sm px-4 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold transition-colors"
+                onClick={() => handleBulkAction("recalculate")}
+                disabled={bulkLoading}
+                className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
               >
-                Comparar →
+                ↻ Score
+              </button>
+              <button
+                onClick={() => handleBulkAction("delete")}
+                disabled={bulkLoading}
+                className="text-xs px-3 py-1.5 rounded-lg bg-red-900/50 border border-red-800 hover:bg-red-900 text-red-400 transition-colors disabled:opacity-50"
+              >
+                Eliminar
               </button>
               <button
                 onClick={() => setCompareIds(new Set())}
                 className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
               >
-                Limpiar
+                ✕
               </button>
             </div>
           )}
@@ -291,6 +376,19 @@ export default function Dashboard() {
           onClose={() => setMapLead(null)}
           onUpdate={handleUpdate}
           onDelete={(id) => { handleDelete(id); setMapLead(null); }}
+        />
+      )}
+
+      {addLeadOpen && (
+        <AddLeadModal
+          onClose={() => setAddLeadOpen(false)}
+          onCreated={() => { setAddLeadOpen(false); fetchLeads(); }}
+        />
+      )}
+
+      {templatesOpen && (
+        <TemplatesModal
+          onClose={() => setTemplatesOpen(false)}
         />
       )}
     </main>

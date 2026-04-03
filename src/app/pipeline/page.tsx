@@ -5,6 +5,7 @@ import type { Lead, LeadStatus } from "@/lib/types";
 import { LeadModal } from "@/components/LeadModal";
 import { MessageModal } from "@/components/MessageModal";
 import { classifyPhone } from "@/lib/phone-classifier";
+import { toast } from "@/lib/toast";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 interface ColumnConfig {
@@ -20,6 +21,7 @@ const COLUMNS: ColumnConfig[] = [
   { status: "interested",    label: "Interesado",        headerText: "text-ceibo-400",   headerBorder: "border-ceibo-700"  },
   { status: "proposal_sent", label: "Propuesta enviada", headerText: "text-purple-400",  headerBorder: "border-purple-700" },
   { status: "closed_won",    label: "Cerrado ✓",         headerText: "text-emerald-400", headerBorder: "border-emerald-700"},
+  { status: "closed_lost",   label: "Perdido",           headerText: "text-red-400",     headerBorder: "border-red-900"    },
 ];
 
 // ─── Score badge color ─────────────────────────────────────────────────────────
@@ -240,6 +242,7 @@ export default function PipelinePage() {
     interested:    [],
     proposal_sent: [],
     closed_won:    [],
+    closed_lost:   [],
   };
   for (const lead of filteredLeads) {
     const s = lead.status as LeadStatus;
@@ -277,16 +280,18 @@ export default function PipelinePage() {
     );
 
     try {
-      await fetch(`/api/leads/${leadId}`, {
+      const res = await fetch(`/api/leads/${leadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: targetStatus }),
       });
+      if (!res.ok) throw new Error();
     } catch {
       // Revert on failure
       setLeads((prev) =>
         prev.map((l) => l.id === leadId ? { ...l, status: lead.status } : l)
       );
+      toast("Error al mover el lead", "error");
     }
   };
 
@@ -330,7 +335,9 @@ export default function PipelinePage() {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    if (!res.ok) { toast("Error al eliminar el lead", "error"); return; }
+    toast("Lead eliminado");
     setLeads((prev) => prev.filter((l) => l.id !== id));
     setSelectedLead(null);
   };

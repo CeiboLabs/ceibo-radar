@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Toaster } from "@/components/Toaster";
 
 export const metadata: Metadata = {
   title: "Ceibo Radar",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="ml-[220px] min-h-screen">
           {children}
         </div>
+        <Toaster />
       </body>
     </html>
   );

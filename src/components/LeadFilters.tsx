@@ -133,7 +133,8 @@ export function LeadFilters({
         <option value="contacted">Contactado</option>
         <option value="interested">Interesado</option>
         <option value="proposal_sent">Propuesta enviada</option>
-        <option value="closed_won">Cerrado</option>
+        <option value="closed_won">Cerrado ✓</option>
+        <option value="closed_lost">Perdido</option>
       </select>
 
       {/* Department / Region filter — normalized, always shown */}

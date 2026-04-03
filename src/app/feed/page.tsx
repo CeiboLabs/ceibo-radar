@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { Lead, LeadPriority, LeadStatus } from "@/lib/types";
 import { LeadModal } from "@/components/LeadModal";
 import { MessageModal } from "@/components/MessageModal";
+import { toast } from "@/lib/toast";
 
 // ─── Date grouping helpers ────────────────────────────────────────────────────
 function getDateGroup(dateStr: string): "today" | "week" | "earlier" {
@@ -42,7 +43,8 @@ const statusBadge: Record<LeadStatus, { label: string; cls: string }> = {
   contacted:     { label: "Contactado",    cls: "text-blue-400 bg-blue-950 border-blue-800"       },
   interested:    { label: "Interesado",    cls: "text-ceibo-400 bg-ceibo-950 border-ceibo-800"    },
   proposal_sent: { label: "Propuesta",     cls: "text-purple-400 bg-purple-950 border-purple-800" },
-  closed_won:    { label: "Cerrado",       cls: "text-emerald-400 bg-emerald-950 border-emerald-800" },
+  closed_won:    { label: "Cerrado ✓",     cls: "text-emerald-400 bg-emerald-950 border-emerald-800" },
+  closed_lost:   { label: "Perdido",       cls: "text-red-400 bg-red-950 border-red-900"          },
 };
 
 // ─── Feed card ────────────────────────────────────────────────────────────────
@@ -195,13 +197,13 @@ export default function FeedPage() {
     id: number,
     data: { status?: LeadStatus; notes?: string; tags?: string[]; sequence_stage?: string; next_followup_at?: string | null; is_favorite?: boolean }
   ) => {
-    await fetch(`/api/leads/${id}`, {
+    const res = await fetch(`/api/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) { toast("Error al actualizar el lead", "error"); return; }
     await fetchLeads();
-    // If the updated lead is open in the panel, refresh it
     if (selectedLead?.id === id) {
       const updated = await fetch(`/api/leads/${id}`).then(r => r.json()).catch(() => null);
       if (updated) setSelectedLead(updated);
@@ -209,7 +211,9 @@ export default function FeedPage() {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    if (!res.ok) { toast("Error al eliminar el lead", "error"); return; }
+    toast("Lead eliminado");
     setLeads(prev => prev.filter(l => l.id !== id));
     setSelectedLead(null);
   };
