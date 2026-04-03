@@ -6,8 +6,8 @@ import type {
   DetectedOpportunity, EnrichmentData, Campaign, LeadEvent,
 } from "@/lib/types";
 import type { ScoreBreakdown } from "@/lib/lead-score";
-import type { AiLeadAnalysis } from "@/lib/ai/types";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
+import { BusinessProfileModal } from "@/components/BusinessProfileModal";
 import { toast } from "@/lib/toast";
 import { getContactTiming } from "@/lib/sales/contactTimingEngine";
 import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
@@ -142,14 +142,11 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
   // Contact loading
   const [contactLoading, setContactLoading] = useState<string | null>(null);
 
-  // AI state
-  const [aiLoading, setAiLoading]       = useState(false);
-  const [aiError, setAiError]           = useState<string | null>(null);
-  const [aiSummary, setAiSummary]       = useState<string | null>(lead.ai_summary ?? null);
-  const [aiAnalysis, setAiAnalysis]     = useState<AiLeadAnalysis | null>(() => {
-    try { return lead.ai_analysis ? JSON.parse(lead.ai_analysis) : null; } catch { return null; }
-  });
-  const [aiPremiumTier, setAiPremiumTier] = useState<"$" | "$$" | "$$$" | null>(lead.ai_premium_tier ?? null);
+  // Profile modal
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  // AI premium tier (read-only from stored lead data)
+  const aiPremiumTier = lead.ai_premium_tier ?? null;
 
   // Score breakdown open/closed
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -260,20 +257,6 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
     if (!res.ok) { toast("Error al recalcular el score", "error"); return; }
     toast("Score recalculado");
     onUpdate(lead.id, {});
-  };
-
-  const handleAiAnalyze = async () => {
-    setAiLoading(true); setAiError(null);
-    try {
-      const res = await fetch(`/api/leads/${lead.id}/ai-analyze`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { setAiError(data.error ?? "Error al analizar con AI"); return; }
-      setAiSummary(data.summary);
-      setAiAnalysis(data.analysis);
-      setAiPremiumTier(data.premium_tier);
-      fetch(`/api/leads/${lead.id}/events`).then(r => r.json()).then(setEvents).catch(() => {});
-    } catch { setAiError("Error de conexión con AI"); }
-    finally { setAiLoading(false); }
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -730,90 +713,6 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
           {/* ── Tab: Análisis ────────────────────────────────────────────────── */}
           {activeTab === "analisis" && (
             <>
-              {/* ── AI Section ────────────────────────────────────────────────── */}
-              <div className="border border-gray-700 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-800/60">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-ceibo-400 uppercase tracking-wide">✦ Análisis AI</span>
-                    {aiPremiumTier && (
-                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${
-                        aiPremiumTier === "$$$" ? "bg-emerald-950/60 text-emerald-400 border-emerald-800" :
-                        aiPremiumTier === "$$"  ? "bg-ceibo-950 text-ceibo-400 border-ceibo-800" :
-                                                  "bg-gray-800 text-gray-500 border-gray-700"
-                      }`}>{aiPremiumTier}</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleAiAnalyze}
-                    disabled={aiLoading}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 disabled:bg-gray-800 disabled:text-gray-500 text-ceibo-300 border border-ceibo-700 transition-colors font-medium"
-                  >
-                    {aiLoading ? "Analizando..." : aiSummary ? "Re-analizar" : "Analizar con AI"}
-                  </button>
-                </div>
-                {aiError && (
-                  <div className="px-4 py-2 bg-red-950/40 border-t border-red-900">
-                    <p className="text-xs text-red-400">{aiError}</p>
-                  </div>
-                )}
-                {aiSummary ? (
-                  <div className="px-4 py-4 border-t border-gray-700 space-y-4">
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Resumen</p>
-                      <p className="text-sm text-gray-200 leading-relaxed">{aiSummary}</p>
-                    </div>
-                    {aiAnalysis && (
-                      <>
-                        {aiAnalysis.digital_weaknesses.length > 0 && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">Debilidades digitales</p>
-                            <ul className="space-y-1">
-                              {aiAnalysis.digital_weaknesses.map((w, i) => (
-                                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-300">
-                                  <span className="text-red-500 shrink-0 mt-0.5">✕</span>{w}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {aiAnalysis.business_opportunities.length > 0 && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">Oportunidades</p>
-                            <ul className="space-y-1">
-                              {aiAnalysis.business_opportunities.map((o, i) => (
-                                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-300">
-                                  <span className="text-ceibo-500 shrink-0 mt-0.5">→</span>{o}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {aiAnalysis.digital_maturity_assessment && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Madurez digital</p>
-                            <p className="text-xs text-gray-300">{aiAnalysis.digital_maturity_assessment}</p>
-                          </div>
-                        )}
-                        {aiAnalysis.missing_conversion_channels.length > 0 && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1.5">Canales faltantes</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {aiAnalysis.missing_conversion_channels.map((c, i) => (
-                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-orange-950/60 text-orange-400 border border-orange-900">{c}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ) : !aiLoading && (
-                  <div className="px-4 py-3 border-t border-gray-700">
-                    <p className="text-xs text-gray-600">Presiona &quot;Analizar con AI&quot; para generar un análisis comercial de este lead.</p>
-                  </div>
-                )}
-              </div>
-
               {/* ── Ceibo Fit Score breakdown ──────────────────────────────────── */}
               {lead.lead_score !== null && (
                 <div className={`rounded-xl border overflow-hidden ${
@@ -941,13 +840,20 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
         {/* ── end scrollable content ──────────────────────────────────────────── */}
 
         {/* ── Sticky footer ──────────────────────────────────────────────────── */}
-        <div className="sticky bottom-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 px-6 py-4 flex gap-3 shrink-0">
+        <div className="sticky bottom-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 px-6 py-4 flex gap-3 shrink-0 flex-wrap">
           <button
             onClick={handleSave}
             disabled={saving}
             className="flex-1 bg-ceibo-600 hover:bg-ceibo-500 disabled:bg-gray-700 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-purple-400 hover:text-purple-300 rounded-lg text-sm transition-colors border border-gray-700"
+            title="Extraer información del negocio"
+          >
+            ⬡ Extraer info
           </button>
           <button
             onClick={onClose}
@@ -977,6 +883,10 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
           )}
         </div>
       </div>
+
+      {profileOpen && (
+        <BusinessProfileModal lead={lead} onClose={() => setProfileOpen(false)} />
+      )}
     </div>
   );
 }
