@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const difficulty = searchParams.get("difficulty");
   const segment = searchParams.get("segment");
   const locationRegion = searchParams.get("region");
+  const keyword = searchParams.get("keyword");
 
   let query = supabase.from("leads").select("*");
 
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
   if (difficulty && difficulty !== "all") query = query.eq("difficulty_level", difficulty);
   if (segment && segment !== "all")    query = query.ilike("segment_tags", `%"${segment}"%`);
   if (locationRegion && locationRegion !== "all") query = query.eq("location_region", locationRegion);
+  if (keyword) query = query.eq("keyword", keyword);
 
   const { data: leads, error } = await query
     .order("lead_score", { ascending: false, nullsFirst: false })

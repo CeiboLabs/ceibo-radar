@@ -450,10 +450,10 @@ export default function BuscarPage() {
                     </div>
                   </div>
                   <Link
-                    href="/"
+                    href={`/?keyword=${encodeURIComponent(keyword.trim())}`}
                     className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
                   >
-                    Ver leads →
+                    Ver leads de &quot;{keyword.trim()}&quot; →
                   </Link>
                 </div>
               )}

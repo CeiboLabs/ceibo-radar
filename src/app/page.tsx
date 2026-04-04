@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 const HIDDEN_AUTO_TAGS = new Set([
   "sin-website", "website-malo", "website-mejorable",
@@ -51,8 +52,10 @@ function LeadsSkeleton() {
 }
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [keywordFilter, setKeywordFilter] = useState(() => searchParams.get("keyword") ?? "");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -88,13 +91,14 @@ export default function Dashboard() {
       if (difficulty !== "all") params.set("difficulty", difficulty);
       if (segment !== "all") params.set("segment", segment);
       if (locationRegion !== "all") params.set("region", locationRegion);
+      if (keywordFilter) params.set("keyword", keywordFilter);
       const res = await fetch(`/api/leads?${params}`);
       const data = await res.json();
       setLeads(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
-  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -199,6 +203,7 @@ export default function Dashboard() {
     setSegment("all");
     setLocationRegion("all");
     setNameSearch("");
+    setKeywordFilter("");
   };
 
   const handleBulkAction = async (action: "status" | "recalculate" | "delete", value?: string) => {
@@ -281,6 +286,12 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
+            {keywordFilter && (
+              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-ceibo-950 border border-ceibo-800 text-ceibo-400">
+                Búsqueda: <strong>{keywordFilter}</strong>
+                <button onClick={() => setKeywordFilter("")} className="hover:text-white transition-colors">✕</button>
+              </span>
+            )}
 
             <button
               onClick={exportCSV}
