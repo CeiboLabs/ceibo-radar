@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
 
 const HIDDEN_AUTO_TAGS = new Set([
   "sin-website", "website-malo", "website-mejorable",
@@ -52,10 +51,9 @@ function LeadsSkeleton() {
 }
 
 export default function Dashboard() {
-  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [keywordFilter, setKeywordFilter] = useState(() => searchParams.get("keyword") ?? "");
+  const [keywordFilter, setKeywordFilter] = useState("");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -77,6 +75,12 @@ export default function Dashboard() {
 
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Read ?keyword= from URL on mount
+  useEffect(() => {
+    const kw = new URLSearchParams(window.location.search).get("keyword");
+    if (kw) setKeywordFilter(kw);
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
