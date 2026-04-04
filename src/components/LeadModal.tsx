@@ -12,6 +12,7 @@ import { toast } from "@/lib/toast";
 import { getContactTiming } from "@/lib/sales/contactTimingEngine";
 import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
 import { classifyPhone } from "@/lib/phone-classifier";
+import { buildWhatsAppAction, buildEmailAction } from "@/lib/contact-actions";
 
 const SEQUENCE_STAGES = [
   { key: "none",          label: "Sin iniciar"    },
@@ -140,7 +141,6 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Contact loading
-  const [contactLoading, setContactLoading] = useState<string | null>(null);
 
   // Profile modal
   const [profileOpen, setProfileOpen] = useState(false);
@@ -175,23 +175,21 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
   }, [lead.id]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleContactAction = async (channel: "whatsapp" | "email") => {
-    setContactLoading(channel);
-    try {
-      const res = await fetch(`/api/leads/${lead.id}/contact`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel }),
-      });
-      const data = await res.json();
-      if (!res.ok) return;
-      window.open(data.url, "_blank");
-      if (data.updated_lead?.status !== status) {
-        setStatus(data.updated_lead.status);
-        onUpdate(lead.id, { status: data.updated_lead.status });
-      }
-      // Refresh events after contact
-      fetch(`/api/leads/${lead.id}/events`).then(r => r.json()).then(setEvents).catch(() => {});
-    } finally { setContactLoading(null); }
+  // Log contact in background (no await — don't block the navigation)
+  const logContact = (channel: "whatsapp" | "email") => {
+    fetch(`/api/leads/${lead.id}/contact`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.updated_lead?.status !== status) {
+          setStatus(data.updated_lead.status);
+          onUpdate(lead.id, { status: data.updated_lead.status });
+        }
+        fetch(`/api/leads/${lead.id}/events`).then(r => r.json()).then(setEvents).catch(() => {});
+      })
+      .catch(() => {});
   };
 
   const handleFavoriteToggle = async () => {
@@ -491,41 +489,41 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
                             {phoneInfo.type === "mobile" ? "📱 Móvil" : "☎ Fijo"}
                           </span>
                         )}
-                        {phoneInfo.canWhatsapp ? (
+                        {(() => {
+                          const waAction = buildWhatsAppAction(lead);
+                          return waAction ? (
+                            <a
+                              href={waAction.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => logContact("whatsapp")}
+                              className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-300 border border-ceibo-700 transition-colors shrink-0"
+                            >
+                              WhatsApp ↗
+                            </a>
+                          ) : null;
+                        })()}
+                      </div>
+                    );
+                  })()}
+                  {lead.email && (() => {
+                    const emailAction = buildEmailAction(lead);
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-20 shrink-0">Email</span>
+                        <span className="text-gray-200 flex-1 truncate text-xs">{lead.email}</span>
+                        {emailAction && (
                           <a
-                            href={phoneInfo.whatsappUrl!}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => handleContactAction("whatsapp")}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-300 border border-ceibo-700 transition-colors shrink-0"
+                            href={emailAction.url}
+                            onClick={() => logContact("email")}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-800 transition-colors"
                           >
-                            WhatsApp ↗
+                            Email
                           </a>
-                        ) : (
-                          <button
-                            onClick={() => handleContactAction("whatsapp")}
-                            disabled={contactLoading === "whatsapp"}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 disabled:bg-gray-800 text-ceibo-300 border border-ceibo-700 transition-colors shrink-0"
-                          >
-                            {contactLoading === "whatsapp" ? "..." : "WhatsApp"}
-                          </button>
                         )}
                       </div>
                     );
                   })()}
-                  {lead.email && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 w-20 shrink-0">Email</span>
-                      <span className="text-gray-200 flex-1 truncate text-xs">{lead.email}</span>
-                      <button
-                        onClick={() => handleContactAction("email")}
-                        disabled={contactLoading === "email"}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 disabled:bg-gray-800 text-blue-300 border border-blue-800 transition-colors"
-                      >
-                        {contactLoading === "email" ? "..." : "Email"}
-                      </button>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 w-20 shrink-0">
                       {lead.platform === "instagram" ? "Instagram" : "Perfil"}
