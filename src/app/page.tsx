@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [keywordFilter, setKeywordFilter] = useState("");
+  const [searchLocationsFilter, setSearchLocationsFilter] = useState<string[]>([]);
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -76,10 +77,13 @@ export default function Dashboard() {
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Read ?keyword= from URL on mount
+  // Read ?keyword= and ?search_locations= from URL on mount
   useEffect(() => {
-    const kw = new URLSearchParams(window.location.search).get("keyword");
+    const params = new URLSearchParams(window.location.search);
+    const kw = params.get("keyword");
     if (kw) setKeywordFilter(kw);
+    const locs = params.get("search_locations");
+    if (locs) setSearchLocationsFilter(locs.split("|").map(decodeURIComponent).filter(Boolean));
   }, []);
 
   const fetchLeads = useCallback(async () => {
@@ -96,13 +100,14 @@ export default function Dashboard() {
       if (segment !== "all") params.set("segment", segment);
       if (locationRegion !== "all") params.set("region", locationRegion);
       if (keywordFilter) params.set("keyword", keywordFilter);
+      if (searchLocationsFilter.length > 0) params.set("search_locations", searchLocationsFilter.map(encodeURIComponent).join("|"));
       const res = await fetch(`/api/leads?${params}`);
       const data = await res.json();
       setLeads(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
-  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, searchLocationsFilter]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -208,6 +213,7 @@ export default function Dashboard() {
     setLocationRegion("all");
     setNameSearch("");
     setKeywordFilter("");
+    setSearchLocationsFilter([]);
   };
 
   const handleBulkAction = async (action: "status" | "recalculate" | "delete", value?: string) => {
@@ -293,7 +299,10 @@ export default function Dashboard() {
             {keywordFilter && (
               <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-ceibo-950 border border-ceibo-800 text-ceibo-400">
                 Búsqueda: <strong>{keywordFilter}</strong>
-                <button onClick={() => setKeywordFilter("")} className="hover:text-white transition-colors">✕</button>
+                {searchLocationsFilter.length > 0 && (
+                  <span className="text-ceibo-600">· {searchLocationsFilter.length === 1 ? searchLocationsFilter[0].split(",")[0] : `${searchLocationsFilter.length} lugares`}</span>
+                )}
+                <button onClick={() => { setKeywordFilter(""); setSearchLocationsFilter([]); }} className="hover:text-white transition-colors">✕</button>
               </span>
             )}
 

@@ -450,7 +450,7 @@ export default function BuscarPage() {
                     </div>
                   </div>
                   <Link
-                    href={`/?keyword=${encodeURIComponent(keyword.trim())}`}
+                    href={`/?keyword=${encodeURIComponent(keyword.trim())}&search_locations=${Array.from(selectedLocations).map(encodeURIComponent).join("|")}`}
                     className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
                   >
                     Ver leads de &quot;{keyword.trim()}&quot; →
@@ -499,13 +499,21 @@ export default function BuscarPage() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => rerunSearch(item)}
-                        className="shrink-0 text-xs px-2.5 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                      >
-                        Re-ejecutar
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Link
+                          href={`/?keyword=${encodeURIComponent(item.keyword)}&search_locations=${item.locations.map(encodeURIComponent).join("|")}`}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-400 transition-colors"
+                        >
+                          Ver
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => rerunSearch(item)}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                        >
+                          Re-ejecutar
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
