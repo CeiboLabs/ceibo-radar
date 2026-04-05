@@ -135,6 +135,8 @@ export async function POST(req: NextRequest) {
     }
 
     const allSaved: Array<{ has_website: boolean; website_quality: string | null }> = [];
+    // Track profile_urls of existing leads found in this search (to re-tag with session_id)
+    const deduplicatedUrls: string[] = [];
 
     for (const location of locations) {
       const byPlatform: ScrapedBusiness[][] = [];
@@ -176,7 +178,10 @@ export async function POST(req: NextRequest) {
       const locKey = normalizeName(location);
       const locationNames = existingNamesByLocation.get(locKey) ?? [];
       const newBusinesses = scraped.filter((b) => {
-        if (existingUrls.has(b.profile_url)) return false;
+        if (existingUrls.has(b.profile_url)) {
+          deduplicatedUrls.push(b.profile_url);
+          return false;
+        }
         const normB = normalizeName(b.name);
         return !locationNames.some(existingNorm => isSimilarName(normB, existingNorm));
       });
@@ -448,6 +453,17 @@ export async function POST(req: NextRequest) {
           console.error("[search] upsert error for", business.name, e);
           await send({ type: "progress", message: `✗ Error guardando ${business.name}: ${e instanceof Error ? e.message : String(e)}` });
         }
+      }
+    }
+
+    // Tag existing (deduped) leads with the current session_id so they appear in session filter
+    if (sessionId && deduplicatedUrls.length > 0) {
+      const BATCH = 100;
+      for (let i = 0; i < deduplicatedUrls.length; i += BATCH) {
+        await supabase
+          .from("leads")
+          .update({ search_session_id: sessionId })
+          .in("profile_url", deduplicatedUrls.slice(i, i + BATCH));
       }
     }
 
