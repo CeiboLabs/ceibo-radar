@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
     : [];
   const platforms: Platform[] = config.platforms ?? [];
   const maxLeads: number = (body.maxLeads as number) ?? 20;
+  const sessionId: string | undefined = (body.session_id as string) || undefined;
   // Derive scraper depth from maxLeads: ~3.5 results per scroll
   const maxScrolls = Math.max(3, Math.ceil(maxLeads / 3));
   const instagramQueryCount = maxLeads <= 10 ? 1 : maxLeads <= 25 ? 2 : 3;
@@ -430,6 +431,7 @@ export async function POST(req: NextRequest) {
                 sequence_stage: "none",
                 keyword,
                 search_location: location,
+                search_session_id: sessionId ?? null,
               },
               { onConflict: "profile_url", ignoreDuplicates: true }
             )

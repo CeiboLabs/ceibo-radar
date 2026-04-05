@@ -37,11 +37,8 @@ export async function GET(req: NextRequest) {
   if (segment && segment !== "all")    query = query.ilike("segment_tags", `%"${segment}"%`);
   if (locationRegion && locationRegion !== "all") query = query.eq("location_region", locationRegion);
   if (keyword) query = query.eq("keyword", keyword);
-  const searchLocations = searchParams.get("search_locations");
-  if (searchLocations) {
-    const locs = searchLocations.split("|").map(l => decodeURIComponent(l)).filter(Boolean);
-    if (locs.length > 0) query = query.in("search_location", locs);
-  }
+  const sessionId = searchParams.get("session");
+  if (sessionId) query = query.eq("search_session_id", sessionId);
 
   const { data: leads, error } = await query
     .order("lead_score", { ascending: false, nullsFirst: false })

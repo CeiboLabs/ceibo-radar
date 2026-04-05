@@ -54,7 +54,7 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [keywordFilter, setKeywordFilter] = useState("");
-  const [searchLocationsFilter, setSearchLocationsFilter] = useState<string[]>([]);
+  const [sessionFilter, setSessionFilter] = useState<string | null>(null);
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -77,13 +77,13 @@ export default function Dashboard() {
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Read ?keyword= and ?search_locations= from URL on mount
+  // Read ?keyword= and ?session= from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const kw = params.get("keyword");
     if (kw) setKeywordFilter(kw);
-    const locs = params.get("search_locations");
-    if (locs) setSearchLocationsFilter(locs.split("|").map(decodeURIComponent).filter(Boolean));
+    const session = params.get("session");
+    if (session) setSessionFilter(session);
   }, []);
 
   const fetchLeads = useCallback(async () => {
@@ -100,14 +100,14 @@ export default function Dashboard() {
       if (segment !== "all") params.set("segment", segment);
       if (locationRegion !== "all") params.set("region", locationRegion);
       if (keywordFilter) params.set("keyword", keywordFilter);
-      if (searchLocationsFilter.length > 0) params.set("search_locations", searchLocationsFilter.map(encodeURIComponent).join("|"));
+      if (sessionFilter) params.set("session", sessionFilter);
       const res = await fetch(`/api/leads?${params}`);
       const data = await res.json();
       setLeads(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
-  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, searchLocationsFilter]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, sessionFilter]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -213,7 +213,7 @@ export default function Dashboard() {
     setLocationRegion("all");
     setNameSearch("");
     setKeywordFilter("");
-    setSearchLocationsFilter([]);
+    setSessionFilter(null);
   };
 
   const handleBulkAction = async (action: "status" | "recalculate" | "delete", value?: string) => {
@@ -296,13 +296,10 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
-            {keywordFilter && (
+            {(keywordFilter || sessionFilter) && (
               <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-ceibo-950 border border-ceibo-800 text-ceibo-400">
-                Búsqueda: <strong>{keywordFilter}</strong>
-                {searchLocationsFilter.length > 0 && (
-                  <span className="text-ceibo-600">· {searchLocationsFilter.length === 1 ? searchLocationsFilter[0].split(",")[0] : `${searchLocationsFilter.length} lugares`}</span>
-                )}
-                <button onClick={() => { setKeywordFilter(""); setSearchLocationsFilter([]); }} className="hover:text-white transition-colors">✕</button>
+                {sessionFilter ? "Esta búsqueda" : "Búsqueda"}{keywordFilter && <strong>: {keywordFilter}</strong>}
+                <button onClick={() => { setKeywordFilter(""); setSessionFilter(null); }} className="hover:text-white transition-colors">✕</button>
               </span>
             )}
 
