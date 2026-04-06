@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Campaign, Lead } from "@/lib/types";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 // ─── Create Campaign Modal ────────────────────────────────────────────────────
 function CreateModal({ onClose, onCreate }: {
@@ -72,6 +73,7 @@ function CampaignDetail({ campaign, onClose, onDelete, onUpdate }: {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetch(`/api/campaigns/${campaign.id}`)
@@ -88,8 +90,10 @@ function CampaignDetail({ campaign, onClose, onDelete, onUpdate }: {
     setLeads((prev) => prev.filter((l) => l.id !== leadId));
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar la campaña "${campaign.name}"?`)) return;
+  const handleDelete = () => setShowDeleteConfirm(true);
+
+  const confirmDelete = async () => {
+    setShowDeleteConfirm(false);
     await fetch(`/api/campaigns/${campaign.id}`, { method: "DELETE" });
     onDelete(campaign.id);
     onClose();
@@ -178,6 +182,17 @@ function CampaignDetail({ campaign, onClose, onDelete, onUpdate }: {
             </div>
           ))}
         </div>
+      )}
+
+      {showDeleteConfirm && (
+        <ConfirmModal
+          title="Eliminar campaña"
+          message={`¿Eliminar la campaña "${campaign.name}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

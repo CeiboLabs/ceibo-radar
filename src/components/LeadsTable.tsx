@@ -7,6 +7,7 @@ import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
 import { classifyPhone } from "@/lib/phone-classifier";
 import { LeadModal } from "./LeadModal";
 import { BusinessProfileModal } from "./BusinessProfileModal";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -142,6 +143,7 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onSelectAll, on
   const [sortKey, setSortKey]           = useState<SortKey>("lead_score");
   const [sortDir, setSortDir]           = useState<SortDir>("desc");
   const [statusChanging, setStatusChanging] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
@@ -403,7 +405,7 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onSelectAll, on
                   {/* Delete — visible on row hover only */}
                   {onDelete && (
                     <IconBtn
-                      onClick={() => { if (confirm(`¿Eliminar "${lead.name}"?`)) onDelete(lead.id); }}
+                      onClick={() => setPendingDelete({ id: lead.id, name: lead.name })}
                       title="Eliminar lead"
                       className="opacity-0 group-hover:opacity-100 hover:text-red-400 hover:border-red-900 hover:bg-red-950/40"
                     >
@@ -432,6 +434,17 @@ export function LeadsTable({ leads, compareIds, onToggleCompare, onSelectAll, on
         <BusinessProfileModal
           lead={messageLead}
           onClose={() => setMessageLead(null)}
+        />
+      )}
+
+      {pendingDelete && onDelete && (
+        <ConfirmModal
+          title="Eliminar lead"
+          message={`¿Eliminar "${pendingDelete.name}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={() => { onDelete(pendingDelete.id); setPendingDelete(null); }}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </>

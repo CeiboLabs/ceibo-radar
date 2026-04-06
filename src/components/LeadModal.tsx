@@ -8,6 +8,7 @@ import type {
 import type { ScoreBreakdown } from "@/lib/lead-score";
 import { DIFFICULTY_CONFIG } from "@/lib/sales/difficultyEngine";
 import { BusinessProfileModal } from "@/components/BusinessProfileModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { toast } from "@/lib/toast";
 import { getContactTiming } from "@/lib/sales/contactTimingEngine";
 import { SEGMENT_LABELS, SEGMENT_COLORS, type SegmentTag } from "@/lib/sales/segmentationEngine";
@@ -139,6 +140,7 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
   // History
   const [events, setEvents]     = useState<LeadEvent[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Contact loading
 
@@ -234,8 +236,10 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
     onClose();
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar el lead "${lead.name}"? Esta acción no se puede deshacer.`)) return;
+  const handleDelete = () => setShowDeleteConfirm(true);
+
+  const confirmDelete = async () => {
+    setShowDeleteConfirm(false);
     const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
     if (!res.ok) { toast("Error al eliminar el lead", "error"); return; }
     toast("Lead eliminado");
@@ -884,6 +888,17 @@ export function LeadModal({ lead, onClose, onUpdate, onDelete }: LeadModalProps)
 
       {profileOpen && (
         <BusinessProfileModal lead={lead} onClose={() => setProfileOpen(false)} />
+      )}
+
+      {showDeleteConfirm && (
+        <ConfirmModal
+          title="Eliminar lead"
+          message={`¿Eliminar "${lead.name}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

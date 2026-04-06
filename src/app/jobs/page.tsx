@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ScrapeJob } from "@/lib/types";
 import { URUGUAY_DEPARTMENTS } from "@/components/SearchForm";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 function CreateJobModal({ onClose, onCreate }: {
   onClose: () => void;
@@ -142,6 +143,7 @@ export default function JobsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [runningJobId, setRunningJobId] = useState<number | null>(null);
   const [runProgress, setRunProgress] = useState<Record<number, string>>({});
+  const [pendingDeleteJobId, setPendingDeleteJobId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/jobs").then((r) => r.json()).then((data) => { setJobs(Array.isArray(data) ? data : []); setLoading(false); });
@@ -157,10 +159,13 @@ export default function JobsPage() {
     setJobs((prev) => prev.map((j) => j.id === job.id ? updated : j));
   };
 
-  const deleteJob = async (id: number) => {
-    if (!confirm("¿Eliminar este job?")) return;
-    await fetch(`/api/jobs/${id}`, { method: "DELETE" });
-    setJobs((prev) => prev.filter((j) => j.id !== id));
+  const deleteJob = (id: number) => setPendingDeleteJobId(id);
+
+  const confirmDeleteJob = async () => {
+    if (!pendingDeleteJobId) return;
+    await fetch(`/api/jobs/${pendingDeleteJobId}`, { method: "DELETE" });
+    setJobs((prev) => prev.filter((j) => j.id !== pendingDeleteJobId));
+    setPendingDeleteJobId(null);
   };
 
   const runJob = async (job: ScrapeJob) => {
@@ -306,6 +311,16 @@ export default function JobsPage() {
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-xs text-gray-600">
         <strong className="text-gray-500">Nota sobre scheduling:</strong> Los jobs con schedule daily/weekly se pueden ejecutar manualmente desde aquí. La ejecución automática puede configurarse externamente usando cron + la API <code className="text-gray-400">/api/search</code> con los parámetros del job.
       </div>
+      {pendingDeleteJobId && (
+        <ConfirmModal
+          title="Eliminar job"
+          message="¿Eliminar este job? Esta acción no se puede deshacer."
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDeleteJob}
+          onCancel={() => setPendingDeleteJobId(null)}
+        />
+      )}
     </main>
   );
 }

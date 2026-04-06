@@ -18,6 +18,7 @@ import type { SegmentTag } from "@/lib/sales/segmentationEngine";
 import { ComparatorModal } from "@/components/ComparatorModal";
 import { LeadModal } from "@/components/LeadModal";
 import AddLeadModal from "@/components/AddLeadModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { toast } from "@/lib/toast";
 
 const LeadMap = dynamic(() => import("@/components/LeadMap"), { ssr: false });
@@ -78,6 +79,7 @@ export default function Dashboard() {
 
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
 
   const fetchLeads = useCallback(async () => {
@@ -226,7 +228,7 @@ export default function Dashboard() {
 
   const handleBulkAction = async (action: "status" | "recalculate" | "delete", value?: string) => {
     if (compareIds.size === 0) return;
-    if (action === "delete" && !confirm(`¿Eliminar ${compareIds.size} leads? Esta acción no se puede deshacer.`)) return;
+    if (action === "delete") { setShowBulkDeleteConfirm(true); return; }
     setBulkLoading(true);
     const res = await fetch("/api/leads/bulk", {
       method: "POST",
@@ -238,8 +240,7 @@ export default function Dashboard() {
       toast("Error en la acción masiva", "error");
     } else {
       const count = compareIds.size;
-      if (action === "delete") toast(`${count} lead${count > 1 ? "s" : ""} eliminado${count > 1 ? "s" : ""}`);
-      else if (action === "status") toast(`Estado actualizado en ${count} lead${count > 1 ? "s" : ""}`);
+      if (action === "status") toast(`Estado actualizado en ${count} lead${count > 1 ? "s" : ""}`);
       else if (action === "recalculate") toast(`Score recalculado en ${count} lead${count > 1 ? "s" : ""}`);
     }
     setCompareIds(new Set());
@@ -494,6 +495,31 @@ export default function Dashboard() {
         />
       )}
 
+      {showBulkDeleteConfirm && (
+        <ConfirmModal
+          title="Eliminar leads"
+          message={`¿Eliminar ${compareIds.size} lead${compareIds.size !== 1 ? "s" : ""}? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={async () => {
+            setShowBulkDeleteConfirm(false);
+            setBulkLoading(true);
+            const count = compareIds.size;
+            const res = await fetch("/api/leads/bulk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: Array.from(compareIds), action: "delete" }),
+            });
+            setBulkLoading(false);
+            if (!res.ok) toast("Error en la acción masiva", "error");
+            else toast(`${count} lead${count > 1 ? "s" : ""} eliminado${count > 1 ? "s" : ""}`);
+            setCompareIds(new Set());
+            setBulkStatus("");
+            await fetchLeads();
+          }}
+          onCancel={() => setShowBulkDeleteConfirm(false)}
+        />
+      )}
 
     </main>
   );

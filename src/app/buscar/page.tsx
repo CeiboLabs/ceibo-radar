@@ -460,7 +460,7 @@ export default function BuscarPage() {
                     href={`/?keyword=${encodeURIComponent(keyword.trim())}&after=${encodeURIComponent(currentSearchStart ?? "")}`}
                     className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
                   >
-                    Ver leads de &quot;{keyword.trim()}&quot; →
+                    Ver leads de esta búsqueda →
                   </Link>
                 </div>
               )}
