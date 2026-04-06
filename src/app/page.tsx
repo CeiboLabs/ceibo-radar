@@ -53,18 +53,10 @@ function LeadsSkeleton() {
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [keywordFilter, setKeywordFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("keyword") ?? "";
-  });
-  const [afterFilter, setAfterFilter] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("after") ?? null;
-  });
-  const [sessionFilter, setSessionFilter] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("session") ?? null;
-  });
+  const [keywordFilter, setKeywordFilter] = useState("");
+  const [afterFilter, setAfterFilter] = useState<string | null>(null);
+  const [sessionFilter, setSessionFilter] = useState<string | null>(null);
+  const [urlReady, setUrlReady] = useState(false);
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -112,7 +104,19 @@ export default function Dashboard() {
     }
   }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, afterFilter, sessionFilter]);
 
-  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  // Read URL params first, then mark ready to fetch
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setKeywordFilter(params.get("keyword") ?? "");
+    setAfterFilter(params.get("after") ?? null);
+    setSessionFilter(params.get("session") ?? null);
+    setUrlReady(true);
+  }, []);
+
+  // Only fetch after URL params are read
+  useEffect(() => {
+    if (urlReady) fetchLeads();
+  }, [fetchLeads, urlReady]);
 
   // Client-side filters: category, tags, name search
   const displayedLeads = useMemo(() => {
