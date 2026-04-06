@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
   if (segment && segment !== "all")    query = query.ilike("segment_tags", `%"${segment}"%`);
   if (locationRegion && locationRegion !== "all") query = query.eq("location_region", locationRegion);
   if (keyword) query = query.eq("keyword", keyword);
+  const after = searchParams.get("after");
+  if (after) query = query.gte("created_at", after);
   const sessionId = searchParams.get("session");
   if (sessionId) query = query.eq("search_session_id", sessionId);
 

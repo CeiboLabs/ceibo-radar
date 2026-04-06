@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [keywordFilter, setKeywordFilter] = useState("");
+  const [afterFilter, setAfterFilter] = useState<string | null>(null);
   const [sessionFilter, setSessionFilter] = useState<string | null>(null);
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
@@ -77,11 +78,13 @@ export default function Dashboard() {
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Read ?keyword= and ?session= from URL on mount
+  // Read URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const kw = params.get("keyword");
     if (kw) setKeywordFilter(kw);
+    const after = params.get("after");
+    if (after) setAfterFilter(after);
     const session = params.get("session");
     if (session) setSessionFilter(session);
   }, []);
@@ -100,6 +103,7 @@ export default function Dashboard() {
       if (segment !== "all") params.set("segment", segment);
       if (locationRegion !== "all") params.set("region", locationRegion);
       if (keywordFilter) params.set("keyword", keywordFilter);
+      if (afterFilter) params.set("after", afterFilter);
       if (sessionFilter) params.set("session", sessionFilter);
       const res = await fetch(`/api/leads?${params}`);
       const data = await res.json();
@@ -107,7 +111,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, sessionFilter]);
+  }, [websiteFilter, priority, platform, status, favoritesOnly, hotOnly, difficulty, segment, locationRegion, keywordFilter, afterFilter, sessionFilter]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -213,6 +217,7 @@ export default function Dashboard() {
     setLocationRegion("all");
     setNameSearch("");
     setKeywordFilter("");
+    setAfterFilter(null);
     setSessionFilter(null);
   };
 
@@ -296,10 +301,10 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-600">{leads.length} en total</span>
-            {(keywordFilter || sessionFilter) && (
+            {(keywordFilter || afterFilter || sessionFilter) && (
               <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-ceibo-950 border border-ceibo-800 text-ceibo-400">
-                {sessionFilter ? "Esta búsqueda" : "Búsqueda"}{keywordFilter && <strong>: {keywordFilter}</strong>}
-                <button onClick={() => { setKeywordFilter(""); setSessionFilter(null); }} className="hover:text-white transition-colors">✕</button>
+                {(afterFilter || sessionFilter) ? "Última búsqueda" : "Búsqueda"}{keywordFilter && <strong>: {keywordFilter}</strong>}
+                <button onClick={() => { setKeywordFilter(""); setAfterFilter(null); setSessionFilter(null); }} className="hover:text-white transition-colors">✕</button>
               </span>
             )}
 

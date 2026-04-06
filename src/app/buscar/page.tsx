@@ -57,6 +57,7 @@ const BY_REGION = (["metro", "costa", "litoral", "norte", "interior"] as const).
 interface SearchHistoryItem {
   id: string;
   session_id?: string;
+  search_start?: string;
   keyword: string;
   locations: string[];
   platforms: Platform[];
@@ -100,7 +101,7 @@ export default function BuscarPage() {
   const [searching, setSearching] = useState(false);
   const [progressLog, setProgressLog] = useState<string[]>([]);
   const [result, setResult] = useState<{ total: number; no_website: number } | null>(null);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSearchStart, setCurrentSearchStart] = useState<string | null>(null);
 
   // History
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
@@ -141,8 +142,8 @@ export default function BuscarPage() {
     setProgressLog([]);
     setResult(null);
 
-    const sessionId = crypto.randomUUID();
-    setCurrentSessionId(sessionId);
+    const searchStart = new Date().toISOString();
+    setCurrentSearchStart(searchStart);
 
     try {
       const res = await fetch("/api/search", {
@@ -153,7 +154,6 @@ export default function BuscarPage() {
           locations: Array.from(selectedLocations),
           platforms,
           maxLeads,
-          session_id: sessionId,
         }),
       });
 
@@ -189,7 +189,7 @@ export default function BuscarPage() {
       // Save to history
       const item: SearchHistoryItem = {
         id: Date.now().toString(),
-        session_id: sessionId,
+        search_start: searchStart,
         keyword: keyword.trim(),
         locations: Array.from(selectedLocations),
         platforms,
@@ -457,7 +457,7 @@ export default function BuscarPage() {
                     </div>
                   </div>
                   <Link
-                    href={`/?session=${currentSessionId}&keyword=${encodeURIComponent(keyword.trim())}`}
+                    href={`/?keyword=${encodeURIComponent(keyword.trim())}&after=${encodeURIComponent(currentSearchStart ?? "")}`}
                     className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
                   >
                     Ver leads de &quot;{keyword.trim()}&quot; →
@@ -507,9 +507,12 @@ export default function BuscarPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {item.session_id && (
+                        {(item.search_start || item.session_id) && (
                           <Link
-                            href={`/?session=${item.session_id}&keyword=${encodeURIComponent(item.keyword)}`}
+                            href={item.search_start
+                              ? `/?keyword=${encodeURIComponent(item.keyword)}&after=${encodeURIComponent(item.search_start)}`
+                              : `/?keyword=${encodeURIComponent(item.keyword)}&session=${item.session_id}`
+                            }
                             className="text-xs px-2.5 py-1.5 rounded-lg bg-ceibo-900 hover:bg-ceibo-800 text-ceibo-400 transition-colors"
                           >
                             Ver
