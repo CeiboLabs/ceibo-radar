@@ -178,10 +178,22 @@ async function visitListing(
       const name = document.querySelector("h1")?.textContent?.trim() ?? null;
 
       // ── Website ────────────────────────────────────────────────────────────
-      const websiteEl = document.querySelector(
-        'a[data-item-id="authority"]'
-      ) as HTMLAnchorElement | null;
-      const websiteUrl = websiteEl?.href ?? null;
+      const websiteSelectors = [
+        'a[data-item-id="authority"]',
+        'a[data-tooltip="Open website"]',
+        'a[data-tooltip="Abrir sitio web"]',
+        'a[aria-label*="website" i]',
+        'a[aria-label*="sitio web" i]',
+        'a[href][data-value="Website"]',
+      ];
+      let websiteUrl: string | null = null;
+      for (const sel of websiteSelectors) {
+        const el = document.querySelector(sel) as HTMLAnchorElement | null;
+        if (el?.href && !el.href.includes("google.com") && !el.href.includes("maps.google")) {
+          websiteUrl = el.href;
+          break;
+        }
+      }
 
       // ── Phone ──────────────────────────────────────────────────────────────
       const phoneSelectors = [

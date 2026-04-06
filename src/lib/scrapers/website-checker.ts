@@ -18,7 +18,7 @@ export async function checkWebsite(url: string): Promise<boolean> {
     });
 
     clearTimeout(timeout);
-    return response.ok || response.status === 405; // 405 = method not allowed but server exists
+    return response.ok || response.status === 405 || response.status === 403; // 403/405 = server exists but restricts method
   } catch {
     // Try GET as fallback
     try {
@@ -30,7 +30,7 @@ export async function checkWebsite(url: string): Promise<boolean> {
         redirect: "follow",
       });
       clearTimeout(timeout);
-      return response.ok;
+      return response.ok || response.status === 403;
     } catch {
       return false;
     }
