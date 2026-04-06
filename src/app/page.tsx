@@ -53,9 +53,18 @@ function LeadsSkeleton() {
 export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [keywordFilter, setKeywordFilter] = useState("");
-  const [afterFilter, setAfterFilter] = useState<string | null>(null);
-  const [sessionFilter, setSessionFilter] = useState<string | null>(null);
+  const [keywordFilter, setKeywordFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("keyword") ?? "";
+  });
+  const [afterFilter, setAfterFilter] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("after") ?? null;
+  });
+  const [sessionFilter, setSessionFilter] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("session") ?? null;
+  });
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("all");
   const [priority, setPriority] = useState<PriorityFilter>("all");
   const [platform, setPlatform] = useState<Platform | "all">("all");
@@ -78,16 +87,6 @@ export default function Dashboard() {
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Read URL params on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const kw = params.get("keyword");
-    if (kw) setKeywordFilter(kw);
-    const after = params.get("after");
-    if (after) setAfterFilter(after);
-    const session = params.get("session");
-    if (session) setSessionFilter(session);
-  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
