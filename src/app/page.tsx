@@ -284,52 +284,64 @@ export default function Dashboard() {
     <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
       {/* Leads */}
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-200">Leads</h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg font-semibold text-white">Leads</h2>
+              {leads.length > 0 && (
+                <span className="text-xs tabular-nums px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400 font-medium">
+                  {leads.length}
+                </span>
+              )}
+            </div>
             {/* View mode tabs */}
-            <div className="flex bg-gray-800 rounded-lg p-0.5 border border-gray-700">
+            <div className="flex bg-gray-800/80 rounded-lg p-0.5 border border-gray-700/60">
               <button
                 onClick={() => setViewMode("table")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "table" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "table" ? "bg-gray-700 text-white shadow-sm" : "text-gray-500 hover:text-gray-300"}`}
               >
-                ☰ Tabla
+                Tabla
               </button>
               <button
                 onClick={() => setViewMode("map")}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "map" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === "map" ? "bg-gray-700 text-white shadow-sm" : "text-gray-500 hover:text-gray-300"}`}
               >
-                🗺 Mapa
+                Mapa
               </button>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">{leads.length} en total</span>
             {(keywordFilter || afterFilter || sessionFilter) && (
-              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-ceibo-950 border border-ceibo-800 text-ceibo-400">
-                {(afterFilter || sessionFilter) ? "Última búsqueda" : "Búsqueda"}{keywordFilter && <strong>: {keywordFilter}</strong>}
-                <button onClick={() => { setKeywordFilter(""); setAfterFilter(null); setSessionFilter(null); }} className="hover:text-white transition-colors">✕</button>
+              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-ceibo-950/80 border border-ceibo-800/60 text-ceibo-400 font-medium">
+                <svg className="w-3 h-3 text-ceibo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {(afterFilter || sessionFilter) ? "Última búsqueda" : "Búsqueda"}{keywordFilter && <span className="text-ceibo-300">: {keywordFilter}</span>}
+                <button onClick={() => { setKeywordFilter(""); setAfterFilter(null); setSessionFilter(null); }} className="ml-0.5 text-ceibo-600 hover:text-ceibo-300 transition-colors">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
               </span>
             )}
-
             <button
               onClick={exportCSV}
               disabled={displayedLeads.length === 0}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-40"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-gray-600 disabled:opacity-30"
             >
-              ↓ CSV ({displayedLeads.length})
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              CSV
             </button>
             <button
               onClick={() => setAddLeadOpen(true)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors border border-gray-600"
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors border border-gray-700 hover:border-gray-600"
             >
               + Agregar
             </button>
             <Link
               href="/buscar"
-              className="text-xs px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-medium transition-colors"
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-ceibo-700 hover:bg-ceibo-600 text-white font-medium transition-colors shadow-sm shadow-ceibo-900/40"
             >
-              Nueva búsqueda →
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              Nueva búsqueda
             </Link>
           </div>
         </div>

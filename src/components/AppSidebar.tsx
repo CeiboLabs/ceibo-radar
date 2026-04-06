@@ -68,10 +68,10 @@ export function AppSidebar() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                 active
-                  ? "bg-gray-800 text-white font-medium"
-                  : "text-gray-500 hover:text-gray-300 hover:bg-gray-900"
+                  ? "bg-ceibo-950/50 text-white font-medium border border-ceibo-900/60"
+                  : "text-gray-500 hover:text-gray-300 hover:bg-gray-900 border border-transparent"
               }`}
             >
               <span className={active ? "text-ceibo-400" : "text-gray-600"}>{icon}</span>
@@ -82,18 +82,20 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-gray-800/60 space-y-3">
-        <div className="text-xs text-gray-700 font-mono">v1.4.0</div>
+      <div className="px-4 py-4 border-t border-gray-800/60 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-ceibo-800 font-mono font-medium">v1.4.0</span>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-xs text-gray-600 hover:text-red-400 transition-colors disabled:opacity-50"
+          >
+            {loggingOut ? "Saliendo..." : "Salir"}
+          </button>
+        </div>
         {userEmail && (
-          <div className="text-xs text-gray-500 truncate" title={userEmail}>{userEmail}</div>
+          <div className="text-xs text-gray-600 truncate" title={userEmail}>{userEmail}</div>
         )}
-        <button
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="w-full text-left text-xs text-gray-600 hover:text-red-400 transition-colors py-1 disabled:opacity-50"
-        >
-          {loggingOut ? "Saliendo..." : "Cerrar sesión"}
-        </button>
       </div>
     </aside>
   );

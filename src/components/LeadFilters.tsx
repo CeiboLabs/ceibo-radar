@@ -204,32 +204,38 @@ export function LeadFilters({
         {/* Más filtros button */}
         <button
           onClick={() => setExpanded((v) => !v)}
-          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
             expanded || secondaryActive > 0
-              ? "bg-gray-800 border-ceibo-700 text-ceibo-400"
+              ? "bg-ceibo-950/40 border-ceibo-800 text-ceibo-400"
               : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
           }`}
         >
           Más filtros{secondaryActive > 0 ? ` (${secondaryActive})` : ""}
+          <svg className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
 
         {/* Spacer */}
-        <span className="ml-auto text-sm text-gray-500">{totalCount} leads</span>
+        <span className="ml-auto text-xs text-gray-600 tabular-nums">{totalCount} leads</span>
 
         {/* Clear filters */}
         {hasActiveFilters && (
           <button
             onClick={onClearFilters}
-            className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-400 px-2.5 py-1.5 rounded-lg border border-gray-700 hover:border-red-900 bg-gray-800 hover:bg-red-950/20 transition-colors"
           >
-            Limpiar ({totalActive}) ✕
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar{totalActive > 0 ? ` (${totalActive})` : ""}
           </button>
         )}
       </div>
 
       {/* Row 2 — secondary filters, only when expanded */}
       {expanded && (
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-800">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-800/70">
           {/* Platform */}
           {availablePlatforms.length > 0 && (
             <select value={platform} onChange={(e) => onPlatformChange(e.target.value as Platform | "all")} className={selectClass}>

@@ -446,21 +446,22 @@ export default function BuscarPage() {
               {/* Summary */}
               {result && !searching && (
                 <div className="space-y-3">
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-gray-800 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-ceibo-400">{result.total}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">leads encontrados</div>
+                  <div className="flex gap-3">
+                    <div className="flex-1 bg-gray-800/80 border border-gray-700/60 rounded-xl p-3.5 text-center">
+                      <div className="text-2xl font-bold text-ceibo-400 tabular-nums">{result.total}</div>
+                      <div className="text-xs text-gray-500 mt-1">leads nuevos</div>
                     </div>
-                    <div className="flex-1 bg-gray-800 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-red-400">{result.no_website}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">sin website</div>
+                    <div className={`flex-1 border rounded-xl p-3.5 text-center ${result.no_website > 0 ? "bg-red-950/20 border-red-900/40" : "bg-gray-800/80 border-gray-700/60"}`}>
+                      <div className={`text-2xl font-bold tabular-nums ${result.no_website > 0 ? "text-red-400" : "text-gray-500"}`}>{result.no_website}</div>
+                      <div className="text-xs text-gray-500 mt-1">sin website</div>
                     </div>
                   </div>
                   <Link
                     href={`/?keyword=${encodeURIComponent(keyword.trim())}&after=${encodeURIComponent(currentSearchStart ?? "")}`}
-                    className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+                    className="flex items-center justify-center gap-2 w-full bg-ceibo-700 hover:bg-ceibo-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-sm shadow-ceibo-900/40"
                   >
-                    Ver leads de esta búsqueda →
+                    Ver leads de esta búsqueda
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                   </Link>
                 </div>
               )}
