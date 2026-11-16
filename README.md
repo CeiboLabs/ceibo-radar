@@ -87,3 +87,4 @@ All scoring and analysis is deterministic — based on real scraped data, no fab
 ## Ceibo Labs
 
 [ceibo.dev](https://ceibo.dev) · Montevideo, Uruguay
+
